@@ -14,11 +14,9 @@ application-local.properties
 application-local.yml
 application-local.yaml
 
-### Spring Boot local override examples
 application-dev-local.properties
 application-dev-local.yml
 
-### Logs (optional local)
 *.log
 .log
 
