@@ -18,4 +18,7 @@ public class RegisterRequest {
     @NotBlank
     @Size(min = 6)
     private String password;
+
+    @Size(max = 255)
+    private String expoPushToken;
 }
