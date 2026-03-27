@@ -1,12 +1,11 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
 
 import { HapticTab } from '@/src/components/haptic-tab';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Colors } from '@/src/constants/theme';
 import { useColorScheme } from '@/src/hooks/use-color-scheme';
 
-export default function TabLayout() {
+export default function PatientTabsLayout() {
   const colorScheme = useColorScheme();
 
   return (
@@ -21,13 +20,6 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="alerts"
-        options={{
-          title: 'Alerts',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bell.fill" color={color} />,
         }}
       />
       <Tabs.Screen

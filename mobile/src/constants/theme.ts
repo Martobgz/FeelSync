@@ -5,6 +5,12 @@
 
 import { Platform } from 'react-native';
 
+export const Status = {
+  connected: '#22C55E',
+  connecting: '#F59E0B',
+  disconnected: '#EF4444',
+};
+
 export const Brand = {
   primary: '#1D9E75',
   mid: '#5DCAA5',

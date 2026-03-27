@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MedicationCard } from '@/src/components/medication-card';
 import { useMedications } from '@/src/hooks/use-medications';
 import { Medication } from '@/src/types/medication';
 
@@ -284,7 +285,6 @@ export default function MedicationsScreen() {
   const [formName, setFormName] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formDose, setFormDose] = useState('');
-
   const [intakeTimesMed, setIntakeTimesMed] = useState<Medication | null>(null);
 
   function openAdd() {
@@ -346,6 +346,7 @@ export default function MedicationsScreen() {
             renderItem={({ item }) => (
               <MedicationCard
                 item={item}
+                showActions
                 onEdit={openEdit}
                 onDelete={deleteMedication}
                 onSetTimes={setIntakeTimesMed}
