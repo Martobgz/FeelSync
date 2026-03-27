@@ -46,9 +46,9 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         String token = jwtProvider.generateToken(user.getUsername(), user.getEmail());
-        log.info("User registered and authenticated: {}", user.getUsername());
+        log.info("User registered: {}", user.getUsername());
 
-        return new AuthResponse(token, "User registered and authenticated successfully");
+        return new AuthResponse(token, "User registered successfully", null);
     }
 
     @Override
@@ -63,13 +63,13 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            log.warn("Login attempt with incorrect password for username/email: {}", request.getUsername());
+            log.warn("Login attempt with incorrect password for: {}", request.getUsername());
             throw new InvalidCredentialsException();
         }
 
         String token = jwtProvider.generateToken(user.getUsername(), user.getEmail());
-        log.info("User successfully logged in and authenticated: {}", user.getUsername());
+        log.info("User logged in: {}", user.getUsername());
 
-        return new AuthResponse(token, "Login successful");
+        return new AuthResponse(token, "Login successful", user.getRole());
     }
 }

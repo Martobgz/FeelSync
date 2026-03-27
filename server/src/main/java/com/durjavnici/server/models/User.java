@@ -27,12 +27,26 @@ public class User {
     @Column(name = "expo_push_token", length = 255)
     private String expoPushToken;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    private UserRole role;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id", nullable = true)
+    private User patient;
 
     public User(String username, String email, String passwordHash, String expoPushToken) {
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.expoPushToken = expoPushToken;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+
+    public void setPatient(User patient) {
+        this.patient = patient;
     }
 }

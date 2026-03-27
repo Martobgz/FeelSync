@@ -11,6 +11,7 @@ interface AlertsState {
   addAlert: (alert: Alert) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
+  removeAlert: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
   loadStoredAlerts: () => Promise<void>;
 }
@@ -38,6 +39,13 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
   markAllRead: async () => {
     const alerts = get().alerts.map((a) => ({ ...a, read: true }));
     set({ alerts, unreadCount: 0 });
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+  },
+
+  removeAlert: async (id) => {
+    const alerts = get().alerts.filter((a) => a.id !== id);
+    const unreadCount = alerts.filter((a) => !a.read).length;
+    set({ alerts, unreadCount });
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
   },
 

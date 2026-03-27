@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,7 +26,14 @@ export default function HomeScreen() {
 
         {/* Header */}
         <View className="mb-4 flex-row items-center justify-between">
-          <Text className="text-3xl font-bold text-gray-900 dark:text-white">Home</Text>
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity
+              onPress={() => router.push('/(auth)/register' as never)}
+              className="rounded-full bg-brand-primary px-3 py-1.5 active:opacity-70">
+              <Text className="text-xs font-bold text-white">Sign up</Text>
+            </TouchableOpacity>
+            <Text className="text-3xl font-bold text-gray-900 dark:text-white">Home</Text>
+          </View>
           {loading && <ActivityIndicator color="#1D9E75" />}
         </View>
 

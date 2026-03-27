@@ -11,6 +11,7 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
+  console.log('[api-client] →', config.method?.toUpperCase(), config.url, token ? '(auth)' : '(no token)');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -18,8 +19,12 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('[api-client] ←', response.status, response.config.url);
+    return response;
+  },
   (error) => {
+    console.log('[api-client] ← error', error.response?.status, error.response?.config?.url, error.message);
     if (error.response?.status === 401) {
       useAuthStore.getState().logout();
     }

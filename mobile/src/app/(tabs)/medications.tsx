@@ -188,8 +188,15 @@ function IntakeTimesModal({
 // ─── MedicationsScreen ────────────────────────────────────────────────────────
 
 export default function MedicationsScreen() {
-  const { medications, isLoading, addMedication, updateMedication, deleteMedication, setIntakeTimes } =
-    useMedications();
+  const {
+    medications,
+    isLoading,
+    addMedication,
+    updateMedication,
+    deleteMedication,
+    setIntakeTimes,
+    setWristbandNotifications,
+  } = useMedications();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMed, setEditingMed] = useState<Medication | null>(null);
@@ -231,9 +238,16 @@ export default function MedicationsScreen() {
         currentAmount: amount,
         dailyDose: dose,
         intakeTimes: editingMed.intakeTimes,
+        wristbandNotifications: editingMed.wristbandNotifications,
       });
     } else {
-      await addMedication({ name, currentAmount: amount, dailyDose: dose, intakeTimes: [] });
+      await addMedication({
+        name,
+        currentAmount: amount,
+        dailyDose: dose,
+        intakeTimes: [],
+        wristbandNotifications: false,
+      });
     }
     closeModal();
   }
@@ -261,6 +275,7 @@ export default function MedicationsScreen() {
                 onEdit={openEdit}
                 onDelete={deleteMedication}
                 onSetTimes={setIntakeTimesMed}
+                onToggleWristband={setWristbandNotifications}
               />
             )}
             showsVerticalScrollIndicator={false}

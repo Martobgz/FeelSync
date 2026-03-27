@@ -26,15 +26,24 @@ public class NotificationServiceImpl implements NotificationService {
             throw new ExpoPushTokenMissingException();
         }
 
-        String title = "FeelSync alert";
-        String body = "Please open FeelSync to review your latest check-in.";
+        String title = switch (riskType) {
+            case "HIGH_HR" -> "High Heart Rate Detected";
+            case "LOW_HR"  -> "Low Heart Rate Detected";
+            default        -> "Biometric Anomaly Detected";
+        };
+        String body = switch (riskType) {
+            case "HIGH_HR" -> "Patient's heart rate exceeded 110 bpm. Please check in.";
+            case "LOW_HR"  -> "Patient's heart rate dropped below 45 bpm. Please check in.";
+            default        -> "An unusual biometric reading was detected.";
+        };
 
         Map<String, Object> payload = Map.of(
                 "to", expoPushToken,
                 "title", title,
                 "body", body,
                 "data", Map.of(
-                        "riskType", riskType == null ? "" : riskType
+                        "type", "episode-alert",
+                        "riskType", riskType
                 )
         );
 
@@ -47,14 +56,10 @@ public class NotificationServiceImpl implements NotificationService {
                     .body(String.class);
 
             log.info("Expo push sent. riskType={} tokenPrefix={} response={}",
-                    riskType,
-                    safeTokenPrefix(expoPushToken),
-                    responseBody);
+                    riskType, safeTokenPrefix(expoPushToken), responseBody);
         } catch (Exception e) {
             log.error("Failed to send Expo push. riskType={} tokenPrefix={}",
-                    riskType,
-                    safeTokenPrefix(expoPushToken),
-                    e);
+                    riskType, safeTokenPrefix(expoPushToken), e);
         }
     }
 
@@ -64,4 +69,3 @@ public class NotificationServiceImpl implements NotificationService {
         return token.substring(0, end);
     }
 }
-

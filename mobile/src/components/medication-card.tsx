@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Switch, Text, TouchableOpacity, View } from 'react-native';
 
 import { calculateRemainingDays } from '@/src/services/notifications/medication-notifications';
 import { Medication } from '@/src/types/medication';
@@ -9,6 +9,7 @@ interface MedicationCardProps {
   onEdit?: (med: Medication) => void;
   onDelete?: (id: string) => void;
   onSetTimes?: (med: Medication) => void;
+  onToggleWristband?: (id: string, enabled: boolean) => void;
 }
 
 export function MedicationCard({
@@ -17,6 +18,7 @@ export function MedicationCard({
   onEdit,
   onDelete,
   onSetTimes,
+  onToggleWristband,
 }: MedicationCardProps) {
   const days = calculateRemainingDays(item);
   const isLow = days <= 3;
@@ -67,25 +69,38 @@ export function MedicationCard({
 
         {/* Actions row — only shown for Guardian */}
         {showActions && (
-          <View className="flex-row gap-2">
-            <TouchableOpacity
-              onPress={() => onSetTimes?.(item)}
-              className="flex-1 items-center rounded-xl bg-brand-light py-2">
-              <Text className="text-sm font-semibold text-brand-primary">
-                {item.intakeTimes.length > 0 ? '⏰ Times' : '⏰ Set Times'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => onEdit?.(item)}
-              className="flex-1 items-center rounded-xl border border-brand-mid py-2">
-              <Text className="text-sm font-semibold text-brand-primary">Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => onDelete?.(item.id)}
-              className="flex-1 items-center rounded-xl border border-red-200 py-2">
-              <Text className="text-sm font-semibold text-red-500">Delete</Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => onSetTimes?.(item)}
+                className="flex-1 items-center rounded-xl bg-brand-light py-2">
+                <Text className="text-sm font-semibold text-brand-primary">
+                  {item.intakeTimes.length > 0 ? '⏰ Times' : '⏰ Set Times'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onEdit?.(item)}
+                className="flex-1 items-center rounded-xl border border-brand-mid py-2">
+                <Text className="text-sm font-semibold text-brand-primary">Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onDelete?.(item.id)}
+                className="flex-1 items-center rounded-xl border border-red-200 py-2">
+                <Text className="text-sm font-semibold text-red-500">Delete</Text>
+              </TouchableOpacity>
+            </View>
+            {onToggleWristband && (
+              <View className="mt-3 flex-row items-center justify-between rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-700">
+                <Text className="text-sm text-gray-600 dark:text-gray-300">Wristband reminders</Text>
+                <Switch
+                  value={item.wristbandNotifications}
+                  onValueChange={(v) => onToggleWristband(item.id, v)}
+                  trackColor={{ false: '#d1d5db', true: '#1D9E75' }}
+                  thumbColor="#fff"
+                />
+              </View>
+            )}
+          </>
         )}
       </View>
     </View>

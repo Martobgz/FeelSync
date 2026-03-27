@@ -5,6 +5,7 @@ import { UserRole } from '@/src/types/auth';
 const KEYS = {
   TOKEN: 'feelsync_token',
   ROLE: 'feelsync_role',
+  PATIENT_LINKED: 'feelsync_patient_linked',
 } as const;
 
 export async function saveToken(token: string): Promise<void> {
@@ -25,7 +26,17 @@ export async function getRole(): Promise<UserRole | null> {
   return null;
 }
 
+export async function savePatientLinked(linked: boolean): Promise<void> {
+  await SecureStore.setItemAsync(KEYS.PATIENT_LINKED, linked ? 'true' : 'false');
+}
+
+export async function getPatientLinked(): Promise<boolean> {
+  const value = await SecureStore.getItemAsync(KEYS.PATIENT_LINKED);
+  return value === 'true';
+}
+
 export async function clearAll(): Promise<void> {
   await SecureStore.deleteItemAsync(KEYS.TOKEN);
   await SecureStore.deleteItemAsync(KEYS.ROLE);
+  await SecureStore.deleteItemAsync(KEYS.PATIENT_LINKED);
 }

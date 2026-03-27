@@ -57,7 +57,15 @@ const SEVERITY: Record<AlertSeverity, {
 
 // ─── AlertCard ───────────────────────────────────────────────────────────────
 
-function AlertCard({ alert, onPress }: { alert: Alert; onPress: () => void }) {
+function AlertCard({
+  alert,
+  onPress,
+  onRemove,
+}: {
+  alert: Alert;
+  onPress: () => void;
+  onRemove: () => void;
+}) {
   const s = SEVERITY[alert.severity];
   return (
     <TouchableOpacity
@@ -65,7 +73,7 @@ function AlertCard({ alert, onPress }: { alert: Alert; onPress: () => void }) {
       activeOpacity={0.75}
       className={`mb-3 rounded-xl border-l-4 px-4 py-3 ${s.border} ${alert.read ? s.readBg : s.unreadBg}`}>
       <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row flex-1 items-center gap-2">
           {!alert.read && (
             <View className="h-2 w-2 rounded-full bg-brand-primary" />
           )}
@@ -80,9 +88,14 @@ function AlertCard({ alert, onPress }: { alert: Alert; onPress: () => void }) {
             {alert.title}
           </Text>
         </View>
-        <Text className="ml-2 shrink-0 text-xs text-gray-400 dark:text-gray-500">
-          {relativeTime(alert.timestamp)}
-        </Text>
+        <View className="ml-2 flex-row items-center gap-3">
+          <Text className="text-xs text-gray-400 dark:text-gray-500">
+            {relativeTime(alert.timestamp)}
+          </Text>
+          <TouchableOpacity onPress={onRemove} hitSlop={10}>
+            <Text className="text-lg text-gray-300 dark:text-gray-600">×</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <Text className="mt-1.5 text-sm leading-5 text-gray-600 dark:text-gray-300">
         {alert.body}
@@ -98,6 +111,8 @@ export default function AlertsScreen() {
   const unreadCount = useAlertsStore((s) => s.unreadCount);
   const markRead = useAlertsStore((s) => s.markRead);
   const markAllRead = useAlertsStore((s) => s.markAllRead);
+  const removeAlert = useAlertsStore((s) => s.removeAlert);
+  const clearAll = useAlertsStore((s) => s.clearAll);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100 dark:bg-gray-900">
@@ -105,18 +120,29 @@ export default function AlertsScreen() {
         {/* Header */}
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-3xl font-bold text-gray-900 dark:text-white">Alerts</Text>
-          {unreadCount > 0 && (
-            <TouchableOpacity onPress={markAllRead}>
-              <Text className="text-sm font-semibold text-brand-primary">Mark all read</Text>
-            </TouchableOpacity>
-          )}
+          <View className="flex-row gap-4">
+            {unreadCount > 0 && (
+              <TouchableOpacity onPress={markAllRead}>
+                <Text className="text-sm font-semibold text-brand-primary">Mark all read</Text>
+              </TouchableOpacity>
+            )}
+            {alerts.length > 0 && (
+              <TouchableOpacity onPress={clearAll}>
+                <Text className="text-sm font-semibold text-red-500">Clear all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <FlatList
           data={alerts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <AlertCard alert={item} onPress={() => markRead(item.id)} />
+            <AlertCard
+              alert={item}
+              onPress={() => markRead(item.id)}
+              onRemove={() => removeAlert(item.id)}
+            />
           )}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

@@ -23,7 +23,10 @@
         "BLUETOOTH_CONNECT",
         "ACCESS_FINE_LOCATION",
         "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_CONNECTED_DEVICE"
+        "FOREGROUND_SERVICE_CONNECTED_DEVICE",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
       ]
     },
     "web": {
@@ -51,6 +54,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dd4004c2-ddad-424e-b059-faa900045e85"
+      }
+    },
+    "owner": "pkerezov"
   }
 }

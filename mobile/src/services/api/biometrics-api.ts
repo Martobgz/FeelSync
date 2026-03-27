@@ -10,7 +10,6 @@ interface BiometricsBatchItem {
   avg_movement: number;
 }
 
-// Stub — resolves immediately until server endpoint exists
 export async function postBiometricsBatch(blocks: AggregatedBlock[]): Promise<void> {
   const payload: BiometricsBatchItem[] = blocks.map((b) => ({
     timestamp: new Date(b.timestamp).toISOString(),

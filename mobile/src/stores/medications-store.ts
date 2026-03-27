@@ -2,7 +2,10 @@ import { create } from 'zustand';
 
 import { getMedications } from '@/src/services/api/medications-api';
 import { getCachedMedications, upsertMedications } from '@/src/services/data/medications-dao';
-import { scheduleMedicationNotifications } from '@/src/services/notifications/medication-notifications';
+import {
+  scheduleMedicationNotifications,
+  scheduleIntakeReminders,
+} from '@/src/services/notifications/medication-notifications';
 import { Medication } from '@/src/types/medication';
 
 interface MedicationsState {
@@ -24,6 +27,7 @@ export const useMedicationsStore = create<MedicationsState>((set) => ({
       const meds = await getMedications();
       await upsertMedications(meds);
       await scheduleMedicationNotifications(meds);
+      await scheduleIntakeReminders(meds);
       set({ medications: meds, isLoading: false });
     } catch {
       // Fallback to SQLite cache when offline

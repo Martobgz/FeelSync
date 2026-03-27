@@ -6,8 +6,10 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class AuthResponse {
-    private String token;
-    private String message;
+public class UserProfileResponse {
+    private Long id;
+    private String username;
+    private String email;
     private UserRole role;
+    private boolean patientLinked;
 }

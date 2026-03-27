@@ -1,14 +1,24 @@
 import { create } from 'zustand';
 
 import { User, UserRole } from '@/src/types/auth';
-import { clearAll, getRole, getToken, saveRole, saveToken } from '@/src/services/storage/secure-storage';
+import {
+  clearAll,
+  getPatientLinked,
+  getRole,
+  getToken,
+  savePatientLinked,
+  saveRole,
+  saveToken,
+} from '@/src/services/storage/secure-storage';
 
 interface AuthState {
   token: string | null;
   user: User | null;
   role: UserRole | null;
   isAuthenticated: boolean;
-  setAuth: (token: string, role: UserRole, user?: Partial<User>) => Promise<void>;
+  patientLinked: boolean;
+  setAuth: (token: string, role: UserRole | null, patientLinked?: boolean) => Promise<void>;
+  setPatientLinked: (linked: boolean) => Promise<void>;
   logout: () => Promise<void>;
   loadStoredAuth: () => Promise<void>;
 }
@@ -18,23 +28,30 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   role: null,
   isAuthenticated: false,
+  patientLinked: false,
 
-  setAuth: async (token, role, user) => {
+  setAuth: async (token, role, patientLinked = false) => {
     await saveToken(token);
-    await saveRole(role);
-    set({ token, role, isAuthenticated: true, user: user as User ?? null });
+    if (role) await saveRole(role);
+    set({ token, role, isAuthenticated: true, patientLinked });
+  },
+
+  setPatientLinked: async (linked) => {
+    await savePatientLinked(linked);
+    set({ patientLinked: linked });
   },
 
   logout: async () => {
     await clearAll();
-    set({ token: null, user: null, role: null, isAuthenticated: false });
+    set({ token: null, user: null, role: null, isAuthenticated: false, patientLinked: false });
   },
 
   loadStoredAuth: async () => {
     const token = await getToken();
     const role = await getRole();
-    if (token && role) {
-      set({ token, role, isAuthenticated: true });
+    const patientLinked = await getPatientLinked();
+    if (token) {
+      set({ token, role, isAuthenticated: true, patientLinked });
     }
   },
 }));

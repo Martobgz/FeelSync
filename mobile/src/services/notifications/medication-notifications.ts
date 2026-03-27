@@ -3,6 +3,42 @@ import { SchedulableTriggerInputTypes } from 'expo-notifications';
 
 import { Medication } from '@/src/types/medication';
 
+export async function scheduleIntakeReminders(medications: Medication[]): Promise<void> {
+  // Cancel all previously scheduled intake reminders
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if ((n.content.data as { type?: string })?.type === 'medication-reminder') {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+  }
+
+  for (const med of medications) {
+    if (!med.wristbandNotifications || med.intakeTimes.length === 0) continue;
+
+    for (const time of med.intakeTimes) {
+      const [hourStr, minuteStr] = time.split(':');
+      const hour = parseInt(hourStr, 10);
+      const minute = parseInt(minuteStr, 10);
+      if (isNaN(hour) || isNaN(minute)) continue;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Medication time',
+          body: `Time to take ${med.name}.`,
+          sound: true,
+          data: { type: 'medication-reminder', medicationId: med.id, medicationName: med.name },
+          channelId: 'medications',
+        },
+        trigger: {
+          type: SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute,
+        },
+      });
+    }
+  }
+}
+
 export function calculateRemainingDays(med: Medication): number {
   if (med.addedDate) {
     const daysSinceAdded = Math.floor(
