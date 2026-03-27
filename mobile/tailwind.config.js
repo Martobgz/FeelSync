@@ -9,6 +9,11 @@ module.exports = {
           mid: '#5DCAA5',
           light: '#9FE1CB',
         },
+        status: {
+          connected: '#22C55E',
+          connecting: '#F59E0B',
+          disconnected: '#EF4444',
+        },
       },
     },
   },
