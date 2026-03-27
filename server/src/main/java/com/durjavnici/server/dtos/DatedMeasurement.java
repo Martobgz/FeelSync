@@ -4,10 +4,11 @@ package com.durjavnici.server.dtos;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import java.util.List;
+import java.time.Instant;
 
 @Getter
 @AllArgsConstructor
-public class MeasurementResponse {
-    List<DatedMeasurement> measurements;
+public class DatedMeasurement {
+    private Instant timestamp;
+    private Float measurement;
 }

@@ -1,5 +1,6 @@
 package com.durjavnici.server.services.measurements;
 
+import com.durjavnici.server.dtos.DatedMeasurement;
 import com.durjavnici.server.dtos.MeasurementRequest;
 import com.durjavnici.server.dtos.MeasurementResponse;
 import com.durjavnici.server.models.Measurement;
@@ -46,7 +47,7 @@ public class MeasurementServiceImpl implements MeasurementService {
         return measurementRepository.save(measurement);
     }
 
-    @Scheduled(fixedDelayString = "${measurements.check.interval-ms:900000}")
+    @Scheduled(fixedDelayString = "${measurements.check.interval-ms:3600000}")
     public void checkAllUsersState() {
         List<UserStats> allStats = userStatsRepository.findAll();
 
@@ -78,7 +79,7 @@ public class MeasurementServiceImpl implements MeasurementService {
         return analyzeRecentMeasurements(recentMeasurements, maybeStats.get());
     }
 
-    @Scheduled(fixedDelayString = "${measurements.stats.recalculation-interval-ms:1200000}")
+    @Scheduled(fixedDelayString = "${measurements.stats.recalculation-interval-ms:3600000}")
     public void recalculateUserStats() {
         List<Measurement> allMeasurements = measurementRepository.findAll();
 
@@ -175,8 +176,8 @@ public class MeasurementServiceImpl implements MeasurementService {
         List<Measurement> measurements = measurementRepository
                 .findByUserIdAndCreatedAtAfter(patient.getId(), fromDate);
 
-        List<Float> pulseValues = measurements.stream()
-                .map(Measurement::getPulse)
+        List<DatedMeasurement> pulseValues = measurements.stream()
+                .map(m -> new DatedMeasurement(m.getCreatedAt(), m.getPulse()))
                 .toList();
 
         return new MeasurementResponse(pulseValues);
@@ -193,8 +194,8 @@ public class MeasurementServiceImpl implements MeasurementService {
             List<Measurement> measurements = measurementRepository
                     .findByUserIdAndCreatedAtAfter(patient.getId(), fromDate);
 
-            List<Float> spo2Values = measurements.stream()
-                    .map(Measurement::getSpo2)
+            List<DatedMeasurement> spo2Values = measurements.stream()
+                    .map(m -> new DatedMeasurement(m.getCreatedAt(), m.getSpo2()))
                     .toList();
 
             return new MeasurementResponse(spo2Values);
