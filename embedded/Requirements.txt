@@ -1,0 +1,10 @@
+The selected board in the Arduino IDE is OLIMEX ESP32-S3-DevKit-Lipo.
+Install the following libraries in the Arduino IDE Library Manager:
+ "Wire.h"
+ "MAX30100_PulseOximeter.h"
+ "Adafruit_MPU6050.h"
+ "Adafruit_Sensor.h"
+ "math.h"
+
+
+
