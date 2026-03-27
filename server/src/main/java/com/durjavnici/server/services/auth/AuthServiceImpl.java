@@ -1,13 +1,13 @@
 package com.durjavnici.server.services.auth;
 
 import com.durjavnici.server.dtos.AuthResponse;
-import com.durjavnici.server.dtos.LoginRequest;
 import com.durjavnici.server.dtos.RegisterRequest;
 import com.durjavnici.server.exceptions.EmailAlreadyExistsException;
 import com.durjavnici.server.exceptions.InvalidCredentialsException;
 import com.durjavnici.server.exceptions.UsernameAlreadyExistsException;
 import com.durjavnici.server.jwt.JwtProvider;
 import com.durjavnici.server.models.User;
+import com.durjavnici.server.models.UserType;
 import com.durjavnici.server.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,12 +36,42 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
+        String patientUsername = request.getPatientUsername();
+
+        User patient = null;
+
+        if (request.getUserType() != UserType.PATIENT) {
+
+            if (patientUsername != null && !patientUsername.isBlank()) {
+
+                patient = userRepository.findByUsername(patientUsername)
+                        .orElseThrow(() -> {
+                            log.warn("Registration with non-existing patient username: {}", patientUsername);
+                            return new InvalidCredentialsException(
+                                    "Patient username does not exist: " + patientUsername
+                            );
+                        });
+            }
+        }
+
+        if(patient != null && patient.getUserType() != UserType.PATIENT) {
+            log.warn("Registration with invalid patient association: {} is not a patient", patientUsername);
+            throw new InvalidCredentialsException(
+                    "Associated user is not a patient: " + patientUsername
+            );
+
+        } else {
+            log.info("Registering user without patient association: {}", request.getUsername());
+        }
 
         User user = new User(
                 request.getUsername(),
                 request.getEmail(),
                 encodedPassword,
-                request.getExpoPushToken());
+                request.getExpoPushToken(),
+                request.getUserType(),
+                patient
+        );
 
         userRepository.save(user);
 
@@ -49,27 +79,5 @@ public class AuthServiceImpl implements AuthService {
         log.info("User registered and authenticated: {}", user.getUsername());
 
         return new AuthResponse(token, "User registered and authenticated successfully");
-    }
-
-    @Override
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseGet(() -> userRepository.findByEmail(request.getUsername())
-                        .orElse(null));
-
-        if (user == null) {
-            log.warn("Login attempt with non-existent username or email: {}", request.getUsername());
-            throw new InvalidCredentialsException();
-        }
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            log.warn("Login attempt with incorrect password for username/email: {}", request.getUsername());
-            throw new InvalidCredentialsException();
-        }
-
-        String token = jwtProvider.generateToken(user.getUsername(), user.getEmail());
-        log.info("User successfully logged in and authenticated: {}", user.getUsername());
-
-        return new AuthResponse(token, "Login successful");
     }
 }

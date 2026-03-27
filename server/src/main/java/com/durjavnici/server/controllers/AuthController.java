@@ -2,7 +2,6 @@ package com.durjavnici.server.controllers;
 
 import com.durjavnici.server.dtos.ApiResponse;
 import com.durjavnici.server.dtos.AuthResponse;
-import com.durjavnici.server.dtos.LoginRequest;
 import com.durjavnici.server.dtos.RegisterRequest;
 import com.durjavnici.server.services.auth.AuthService;
 import jakarta.validation.Valid;
@@ -28,18 +27,5 @@ public class AuthController {
                 authResponse
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse> login(
-            @Valid @RequestBody LoginRequest request
-    ) {
-        AuthResponse authResponse = authService.login(request);
-        ApiResponse response = new ApiResponse(
-                HttpStatus.OK.value(),
-                "Login successful",
-                authResponse
-        );
-        return ResponseEntity.ok(response);
     }
 }
