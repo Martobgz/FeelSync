@@ -40,7 +40,8 @@ public class AuthServiceImpl implements AuthService {
         User user = new User(
                 request.getUsername(),
                 request.getEmail(),
-                encodedPassword);
+                encodedPassword,
+                request.getExpoPushToken());
 
         userRepository.save(user);
 
