@@ -10,6 +10,7 @@
 #define SDA_PIN 8
 #define SCL_PIN 9
 #define MOTOR_PIN 15
+const int GSR_PIN = 1;   
 
 // =======================
 // SENSOR OBJECTS
@@ -334,8 +335,11 @@ void loop() {
       Serial.print(latestBpm);
       Serial.print(" | BPM avg: ");
       Serial.print(latestSmoothBpm);
+      uint16_t LATESTAVGBPM = (uint16_t)latestSmoothBpm;                    ////////////////////////////////
       Serial.print(" | SpO2: ");
       Serial.println(latestSpo2);
+      uint16_t LATESTAVGSPO2 = (uint16_t)latestSpo2;                        ///////////////////////////////
+
     } else {
       pulseValid = false;
       Serial.println("PULSE | Ignoring noisy reading...");
@@ -361,14 +365,18 @@ void loop() {
     Serial.println(latestAvgMotion, 3);
 
     if (latestAvgMotion < STILL_THRESHOLD) {
+      uint16_t LATESTMOTION = 1;                                              ////////////////////////////////////////
       Serial.println("MOTION STATUS: STILL");
     } else if (latestAvgMotion < LIGHT_MOVEMENT_THRESHOLD) {
+      LATESTMOTION = 2;                                                       ////////////////////////////////////////
       Serial.println("MOTION STATUS: WALKING / LIGHT MOVEMENT");
     } else {
+      LATESTMOTION = 3;                                                       ////////////////////////////////////////
       Serial.println("MOTION STATUS: RUNNING / STRONG MOVEMENT");
     }
 
     updateSleepLogic(latestAvgMotion);
+    uint16_t sleepStateUint = (uint16_t)sleepState;                           ////////////////////////////////////////
     printSleepSummary();
 
     motionSum = 0.0;
@@ -380,4 +388,13 @@ void loop() {
    delay(2000);
    digitalWrite(MOTOR_PIN,LOW);
    delay(2000);
+   int value = analogRead(GSR_PIN);
+   Serial.println(value);
+
+   uint16_t GSRFINAL = (uint16_t)value;                                        ////////////////////////////////////////
+   delay(2000);
+
+  
+
+
 }
