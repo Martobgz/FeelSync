@@ -55,18 +55,7 @@ export function useBleConnection() {
       setBatteryLevel(level);
     });
 
-    // Auto-connect to saved device
-    AsyncStorage.getItem(DEVICE_ID_KEY).then(async (savedId) => {
-      if (savedId && isMounted.current) {
-        const savedName = await AsyncStorage.getItem(DEVICE_NAME_KEY);
-        setDevice(savedId, savedName);
-        try {
-          await ble.connect(savedId);
-        } catch {
-          // Reconnect will be handled by BleManager internally
-        }
-      }
-    });
+    // Auto-connect disabled — connect manually via the Live HR tab
 
     return () => {
       isMounted.current = false;

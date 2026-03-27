@@ -38,10 +38,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="map"
+        name="live-hr"
         options={{
-          title: 'Map',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="map.fill" color={color} />,
+          title: 'Live HR',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="waveform.path.ecg" color={color} />,
         }}
       />
     </Tabs>
