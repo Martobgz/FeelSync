@@ -17,7 +17,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.mobile"
+      "package": "com.anonymous.mobile",
+      "permissions": [
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_CONNECTED_DEVICE"
+      ]
     },
     "web": {
       "output": "static"
@@ -26,7 +33,20 @@
       "expo-router",
       "expo-notifications",
       "expo-splash-screen",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-task-manager",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": [
+            "central"
+          ]
+        }
+      ],
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,

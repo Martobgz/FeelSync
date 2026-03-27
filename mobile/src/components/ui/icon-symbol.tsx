@@ -21,6 +21,10 @@ const MAPPING = {
   'bell.fill': 'notifications',
   'pills.fill': 'medication',
   'map.fill': 'map',
+  'heart.fill': 'favorite',
+  'battery.100': 'battery-full',
+  'antenna.radiowaves.left.and.right': 'bluetooth',
+  'arrow.triangle.2.circlepath': 'sync',
 } as IconMapping;
 
 /**
