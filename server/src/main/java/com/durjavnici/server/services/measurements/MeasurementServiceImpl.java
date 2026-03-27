@@ -1,7 +1,7 @@
 package com.durjavnici.server.services.measurements;
 
 import com.durjavnici.server.dtos.MeasurementRequest;
-import com.durjavnici.server.exceptions.InvalidCredentialsException;
+import com.durjavnici.server.dtos.MeasurementResponse;
 import com.durjavnici.server.models.Measurement;
 import com.durjavnici.server.models.MovementType;
 import com.durjavnici.server.models.User;
@@ -12,8 +12,6 @@ import com.durjavnici.server.services.notifications.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -38,8 +36,7 @@ public class MeasurementServiceImpl implements MeasurementService {
     private final NotificationService notificationService;
 
     @Override
-    public Measurement create(MeasurementRequest request) {
-        User authenticatedUser = getAuthenticatedUser();
+    public Measurement create(User authenticatedUser, MeasurementRequest request) {
         Measurement measurement = new Measurement(
                 request.getPulse(),
                 request.getSpo2(),
@@ -167,12 +164,39 @@ public class MeasurementServiceImpl implements MeasurementService {
         return movementType == MovementType.STILL;
     }
 
-    private User getAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-            throw new InvalidCredentialsException();
+    @Override
+    public MeasurementResponse getPulse(User patient, int days) {
+        if (patient == null) {
+            throw new IllegalArgumentException("Patient cannot be null");
         }
-        return user;
-    }
-}
 
+        Instant fromDate = Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS);
+
+        List<Measurement> measurements = measurementRepository
+                .findByUserIdAndCreatedAtAfter(patient.getId(), fromDate);
+
+        List<Float> pulseValues = measurements.stream()
+                .map(Measurement::getPulse)
+                .toList();
+
+        return new MeasurementResponse(pulseValues);
+    }
+
+        @Override
+        public MeasurementResponse getSpo2(User patient, int days) {
+            if (patient == null) {
+                throw new IllegalArgumentException("Patient cannot be null");
+            }
+
+            Instant fromDate = Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS);
+
+            List<Measurement> measurements = measurementRepository
+                    .findByUserIdAndCreatedAtAfter(patient.getId(), fromDate);
+
+            List<Float> spo2Values = measurements.stream()
+                    .map(Measurement::getSpo2)
+                    .toList();
+
+            return new MeasurementResponse(spo2Values);
+        }
+    }
