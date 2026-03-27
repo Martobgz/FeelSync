@@ -124,9 +124,6 @@ export class RealBleManager implements BleServiceInterface {
     this.setState('connected');
     this.reconnect.onConnected();
 
-    // Subscribe to the ESP32 TX characteristic (receives all data from wristband)
-    this.subscribeToFeelSyncTX(device);
-
     // Standard GATT services — optional, only available when real sensors are added
     this.trySubscribeToHeartRate(device);
     this.tryReadBattery(device);
@@ -162,28 +159,6 @@ export class RealBleManager implements BleServiceInterface {
     this.setState('disconnected');
   }
 
-  // ─── FeelSync custom characteristic ─────────────────────────────────────────
-
-  private subscribeToFeelSyncTX(device: Device): void {
-    try {
-      const sub = device.monitorCharacteristicForService(
-        BLE_UUIDS.FEELSYNC_SERVICE,
-        BLE_UUIDS.FEELSYNC_TX,
-        (error, characteristic) => {
-          if (error) {
-            console.warn('[BLE] TX characteristic error:', error.message);
-            return;
-          }
-          if (!characteristic?.value) return;
-          const raw = atob(characteristic.value);
-          console.log('[BLE] Received from wristband:', raw);
-        }
-      );
-      this.subscriptions.push(sub);
-    } catch (e) {
-      console.warn('[BLE] Could not subscribe to TX characteristic:', e);
-    }
-  }
 
   // ─── Standard GATT (optional — will silently skip if service not present) ───
 

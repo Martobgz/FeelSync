@@ -103,11 +103,11 @@ export default function PatientHomeScreen() {
             <TouchableOpacity
               className="rounded-xl bg-indigo-500 px-4 py-3 active:opacity-70"
               onPress={() =>
-                sendMessage('Hello from FeelSync!').catch((e) =>
+                sendMessage('VIBRATE').catch((e) =>
                   Alert.alert('Write failed', String(e))
                 )
               }>
-              <Text className="text-center font-semibold text-white">Send test message to ESP32</Text>
+              <Text className="text-center font-semibold text-white">Vibrate wristband</Text>
             </TouchableOpacity>
           </View>
         )}
