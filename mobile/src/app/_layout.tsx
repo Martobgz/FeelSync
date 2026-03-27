@@ -1,15 +1,26 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import 'react-native-reanimated';
 
 import '@/global.css';
 import { useColorScheme } from '@/src/hooks/use-color-scheme';
 import { initDatabase } from '@/src/services/storage/database';
+import { useAlertsStore } from '@/src/stores/alerts-store';
 import { useAuthStore } from '@/src/stores/auth-store';
 import { useBleStore } from '@/src/stores/ble-store';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 // Register background sync task at module level (required by expo-task-manager)
 import '@/src/services/sync/background-sync';
@@ -20,6 +31,7 @@ export const unstable_settings = {
 
 async function initializeApp() {
   await initDatabase();
+  await useAlertsStore.getState().loadStoredAlerts();
   await Notifications.setNotificationChannelAsync('medications', {
     name: 'Medication reminders',
     importance: Notifications.AndroidImportance.DEFAULT,
@@ -29,6 +41,11 @@ async function initializeApp() {
     name: 'Wristband connection',
     importance: Notifications.AndroidImportance.LOW,
     sound: null,
+  });
+  await Notifications.setNotificationChannelAsync('episode-alerts', {
+    name: 'Episode alerts',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'default',
   });
 }
 
@@ -43,6 +60,22 @@ export default function RootLayout() {
   useEffect(() => {
     Promise.all([initializeApp(), loadStoredAuth()]).finally(() => setIsReady(true));
   }, [loadStoredAuth]);
+
+  useEffect(() => {
+    const sub1 = Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data as Record<string, unknown>;
+      if (data?.type === 'episode-alert' && data.alert) {
+        useAlertsStore.getState().addAlert({ ...(data.alert as any), read: false });
+      }
+    });
+    const sub2 = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      if (data?.type === 'episode-alert') {
+        router.push('/(tabs)/alerts' as never);
+      }
+    });
+    return () => { sub1.remove(); sub2.remove(); };
+  }, []);
 
   useEffect(() => {
     if (!isReady) return;
@@ -73,7 +106,33 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
+      {__DEV__ && <DevRoleSwitch />}
       <StatusBar style="auto" />
     </ThemeProvider>
+  );
+}
+
+function DevRoleSwitch() {
+  const segments = useSegments();
+  const isPatient = segments[0] === '(patient-tabs)';
+
+  return (
+    <View style={{ position: 'absolute', top: 52, right: 12, zIndex: 999 }}>
+      <TouchableOpacity
+        onPress={() =>
+          router.replace((isPatient ? '/(tabs)/' : '/(patient-tabs)/') as never)
+        }
+        style={{
+          backgroundColor: isPatient ? '#6366f1' : '#1D9E75',
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 12,
+          opacity: 0.85,
+        }}>
+        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+          {isPatient ? '→ Guardian' : '→ Patient'}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }

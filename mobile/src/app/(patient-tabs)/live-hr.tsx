@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LiveHrChart } from '@/src/components/charts/live-hr-chart';
+import { Config } from '@/src/constants/config';
 import { useBleConnection } from '@/src/hooks/use-ble-connection';
 import { ScannedDevice } from '@/src/services/ble/ble-types';
 import { useBiometricsStore } from '@/src/stores/biometrics-store';
@@ -46,7 +47,6 @@ export default function LiveHrScreen() {
     setDevices([]);
     setShowPicker(true);
     startScan((device) => {
-      if (!device.name?.toLowerCase().includes('feel')) return; // filter noise
       setDevices((prev) =>
         prev.some((d) => d.id === device.id) ? prev : [...prev, device]
       );
@@ -165,7 +165,10 @@ export default function LiveHrScreen() {
               </View>
             ) : (
               <FlatList
-                data={devices}
+                data={[...devices].sort((a, b) =>
+                  Number(b.name?.startsWith(Config.BLE_DEVICE_PREFIX) ?? false) -
+                  Number(a.name?.startsWith(Config.BLE_DEVICE_PREFIX) ?? false)
+                )}
                 keyExtractor={(d) => d.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity

@@ -47,6 +47,10 @@ export class RealBleManager implements BleServiceInterface {
   private reconnect = new BleReconnect();
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  // Discovered at runtime after connecting — not hardcoded
+  private rxServiceUUID: string | null = null;
+  private rxCharUUID: string | null = null;
+
   private hrCallbacks: Set<HrCallback> = new Set();
   private accelCallbacks: Set<AccelCallback> = new Set();
   private batteryCallbacks: Set<BatteryCallback> = new Set();
@@ -73,7 +77,8 @@ export class RealBleManager implements BleServiceInterface {
   async startScan(onDeviceFound: (device: ScannedDevice) => void): Promise<void> {
     this.setState('scanning');
 
-    // null = no service UUID filter (ESP32 doesn't advertise service UUID in packets)
+    // No UUID filter — ESP32 doesn't advertise service UUID in ad packets.
+    // Name prefix filter is applied in the callback so only FeelSync devices are surfaced.
     this.manager.startDeviceScan(
       null,
       { allowDuplicates: false },
@@ -83,13 +88,9 @@ export class RealBleManager implements BleServiceInterface {
           this.setState('disconnected');
           return;
         }
-        if (device) {
-          onDeviceFound({
-            id: device.id,
-            name: device.name ?? device.localName ?? 'Unknown',
-            rssi: device.rssi,
-          });
-        }
+        if (!device) return;
+        const name = device.name ?? device.localName ?? null;
+        onDeviceFound({ id: device.id, name, rssi: device.rssi });
       }
     );
 
@@ -124,27 +125,99 @@ export class RealBleManager implements BleServiceInterface {
     this.setState('connected');
     this.reconnect.onConnected();
 
-    // Standard GATT services — optional, only available when real sensors are added
-    this.trySubscribeToHeartRate(device);
-    this.tryReadBattery(device);
-    this.trySubscribeToBattery(device);
-    this.trySubscribeToAccelerometer(device);
+    // Walk all discovered services/characteristics dynamically
+    await this.discoverAndSubscribe(device);
 
     // Handle unexpected disconnect
     device.onDisconnected((_error, _d) => {
       this.connectedDevice = null;
+      this.rxServiceUUID = null;
+      this.rxCharUUID = null;
       this.setState('disconnected');
       this.clearSubscriptions();
       this.reconnect.scheduleNextAttempt(() => this.connect(deviceId));
     });
   }
 
+  // ─── Dynamic service discovery ──────────────────────────────────────────────
+
+  private async discoverAndSubscribe(device: Device): Promise<void> {
+    const services = await device.services();
+
+    for (const service of services) {
+      const chars = await service.characteristics();
+      const svcUUID = service.uuid.toLowerCase();
+
+      for (const char of chars) {
+        const charUUID = char.uuid.toLowerCase();
+
+        // First writable characteristic found → RX channel (commands phone → device)
+        if (char.isWritableWithResponse && !this.rxCharUUID) {
+          this.rxServiceUUID = svcUUID;
+          this.rxCharUUID = charUUID;
+        }
+
+        // Readable battery characteristic → do an initial read
+        if (char.isReadable && charUUID === BLE_UUIDS.BATTERY_LEVEL) {
+          try {
+            const c = await device.readCharacteristicForService(svcUUID, charUUID);
+            if (c.value) {
+              const level = base64ToBytes(c.value)[0];
+              this.batteryCallbacks.forEach((cb) => cb(level));
+            }
+          } catch {
+            // Battery read failed — not critical
+          }
+        }
+
+        // Notifiable / indicatable → subscribe; data routed by characteristic UUID
+        if (char.isNotifiable || char.isIndicatable) {
+          const sub = device.monitorCharacteristicForService(
+            svcUUID,
+            charUUID,
+            (error, c) => {
+              if (error || !c?.value) return;
+              this.handleCharacteristicUpdate(charUUID, base64ToBytes(c.value));
+            }
+          );
+          this.subscriptions.push(sub);
+        }
+      }
+    }
+  }
+
+  private handleCharacteristicUpdate(charUUID: string, bytes: number[]): void {
+    switch (charUUID) {
+      case BLE_UUIDS.HEART_RATE_MEASUREMENT: {
+        const bpm = parseHeartRate(bytes);
+        this.hrCallbacks.forEach((cb) => cb({ bpm, timestamp: Date.now() }));
+        break;
+      }
+      case BLE_UUIDS.BATTERY_LEVEL: {
+        this.batteryCallbacks.forEach((cb) => cb(bytes[0]));
+        break;
+      }
+      case BLE_UUIDS.ACCELEROMETER_DATA: {
+        if (bytes.length < 6) return;
+        const { x, y, z } = parseAccelerometer(bytes);
+        this.accelCallbacks.forEach((cb) => cb({ x, y, z, timestamp: Date.now() }));
+        break;
+      }
+      // Unknown characteristics silently ignored
+    }
+  }
+
+  // ─── Write ──────────────────────────────────────────────────────────────────
+
   async writeToDevice(message: string): Promise<void> {
     if (!this.connectedDevice) throw new Error('Not connected');
+    if (!this.rxServiceUUID || !this.rxCharUUID) {
+      throw new Error('No writable characteristic discovered on this device');
+    }
     const b64 = btoa(message);
     await this.connectedDevice.writeCharacteristicWithResponseForService(
-      BLE_UUIDS.FEELSYNC_SERVICE,
-      BLE_UUIDS.FEELSYNC_RX,
+      this.rxServiceUUID,
+      this.rxCharUUID,
       b64
     );
   }
@@ -152,83 +225,13 @@ export class RealBleManager implements BleServiceInterface {
   async disconnect(): Promise<void> {
     this.reconnect.cancel();
     this.clearSubscriptions();
+    this.rxServiceUUID = null;
+    this.rxCharUUID = null;
     if (this.connectedDevice) {
       await this.connectedDevice.cancelConnection();
       this.connectedDevice = null;
     }
     this.setState('disconnected');
-  }
-
-
-  // ─── Standard GATT (optional — will silently skip if service not present) ───
-
-  private trySubscribeToHeartRate(device: Device): void {
-    try {
-      const sub = device.monitorCharacteristicForService(
-        BLE_UUIDS.HEART_RATE_SERVICE,
-        BLE_UUIDS.HEART_RATE_MEASUREMENT,
-        (error, characteristic) => {
-          if (error || !characteristic?.value) return;
-          const bytes = base64ToBytes(characteristic.value);
-          const bpm = parseHeartRate(bytes);
-          this.hrCallbacks.forEach((cb) => cb({ bpm, timestamp: Date.now() }));
-        }
-      );
-      this.subscriptions.push(sub);
-    } catch {
-      // Heart rate service not present on this firmware
-    }
-  }
-
-  private trySubscribeToAccelerometer(device: Device): void {
-    try {
-      const sub = device.monitorCharacteristicForService(
-        BLE_UUIDS.ACCELEROMETER_SERVICE,
-        BLE_UUIDS.ACCELEROMETER_DATA,
-        (error, characteristic) => {
-          if (error || !characteristic?.value) return;
-          const bytes = base64ToBytes(characteristic.value);
-          if (bytes.length < 6) return;
-          const { x, y, z } = parseAccelerometer(bytes);
-          this.accelCallbacks.forEach((cb) => cb({ x, y, z, timestamp: Date.now() }));
-        }
-      );
-      this.subscriptions.push(sub);
-    } catch {
-      // Accelerometer service not present on this firmware
-    }
-  }
-
-  private async tryReadBattery(device: Device): Promise<void> {
-    try {
-      const characteristic = await device.readCharacteristicForService(
-        BLE_UUIDS.BATTERY_SERVICE,
-        BLE_UUIDS.BATTERY_LEVEL
-      );
-      if (characteristic.value) {
-        const level = base64ToBytes(characteristic.value)[0];
-        this.batteryCallbacks.forEach((cb) => cb(level));
-      }
-    } catch {
-      // Battery service not present on this firmware
-    }
-  }
-
-  private trySubscribeToBattery(device: Device): void {
-    try {
-      const sub = device.monitorCharacteristicForService(
-        BLE_UUIDS.BATTERY_SERVICE,
-        BLE_UUIDS.BATTERY_LEVEL,
-        (error, characteristic) => {
-          if (error || !characteristic?.value) return;
-          const level = base64ToBytes(characteristic.value)[0];
-          this.batteryCallbacks.forEach((cb) => cb(level));
-        }
-      );
-      this.subscriptions.push(sub);
-    } catch {
-      // Battery notifications not supported on this firmware
-    }
   }
 
   private clearSubscriptions(): void {

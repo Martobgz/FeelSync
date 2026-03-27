@@ -9,7 +9,16 @@ import {
   View,
 } from 'react-native';
 
+import { Config } from '@/src/constants/config';
 import { ScannedDevice } from '@/src/services/ble/ble-types';
+
+function sortedDevices(devices: ScannedDevice[]): ScannedDevice[] {
+  return [...devices].sort((a, b) => {
+    const aFeel = a.name?.startsWith(Config.BLE_DEVICE_PREFIX) ?? false;
+    const bFeel = b.name?.startsWith(Config.BLE_DEVICE_PREFIX) ?? false;
+    return Number(bFeel) - Number(aFeel);
+  });
+}
 
 interface Props {
   visible: boolean;
@@ -66,7 +75,7 @@ export function BleDeviceScanner({ visible, devices, onClose, onSelectDevice }: 
 
           {devices.length > 0 ? (
             <FlatList
-              data={devices}
+              data={sortedDevices(devices)}
               keyExtractor={(item) => item.id}
               style={{ maxHeight: 240 }}
               renderItem={({ item }) => (

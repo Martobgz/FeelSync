@@ -7,4 +7,5 @@ export const Config = {
   BLE_RECONNECT_DELAYS_MS: [5_000, 30_000, 60_000, 300_000] as const,
   BLE_MTU: 512,
   BLE_SCAN_TIMEOUT_MS: 30_000,
+  BLE_DEVICE_PREFIX: 'FeelSync-',
 };
