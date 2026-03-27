@@ -24,9 +24,15 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
 
-    public User(String username, String email, String password) {
+    @Column(name = "expo_push_token", length = 255)
+    private String expoPushToken;
+
+
+
+    public User(String username, String email, String passwordHash, String expoPushToken) {
         this.username = username;
         this.email = email;
-        this.passwordHash = password;
+        this.passwordHash = passwordHash;
+        this.expoPushToken = expoPushToken;
     }
 }

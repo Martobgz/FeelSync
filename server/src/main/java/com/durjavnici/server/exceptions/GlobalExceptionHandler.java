@@ -10,6 +10,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(ExpoPushTokenMissingException.class)
+    public ResponseEntity<ApiResponse> handleExpoPushTokenMissing(ExpoPushTokenMissingException ex) {
+        log.warn("Expo push token missing: {}", ex.getMessage());
+
+        ApiResponse response = new ApiResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                null
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiResponse> handleEmailExists(EmailAlreadyExistsException ex) {
         log.warn("Email already exists: {}", ex.getMessage());
