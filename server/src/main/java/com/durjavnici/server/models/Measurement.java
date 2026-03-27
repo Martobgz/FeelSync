@@ -1,5 +1,6 @@
 package com.durjavnici.server.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -30,9 +31,15 @@ public class Measurement {
     @Column(name = "timestamp", nullable = false)
     private Instant createdAt = Instant.now();
 
-    public Measurement(Float pulse, Float spo2, MovementType movement) {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
+    private User user;
+
+    public Measurement(Float pulse, Float spo2, MovementType movement, User user) {
         this.pulse = pulse;
         this.spo2 = spo2;
         this.movement = movement;
+        this.user = user;
     }
 }
