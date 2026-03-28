@@ -19,7 +19,15 @@ export default function PairDeviceScreen() {
     setError('');
     setScannerVisible(true);
     await startScan((device) => {
-      setFoundDevices((prev) => (prev.some((d) => d.id === device.id) ? prev : [...prev, device]));
+      setFoundDevices((prev) => {
+        if (prev.some((d) => d.id === device.id)) return prev;
+        const next = [...prev, device];
+        return next.sort((a, b) => {
+          const aFeelSync = a.name?.startsWith('FeelSync') ? 0 : 1;
+          const bFeelSync = b.name?.startsWith('FeelSync') ? 0 : 1;
+          return aFeelSync - bFeelSync;
+        });
+      });
     });
   }
 

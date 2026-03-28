@@ -24,6 +24,48 @@ export function useBleConnection() {
     const ble = getBleService();
     const pipeline = getDataPipeline();
 
+    // Auto-reconnect to last paired device (best-effort).
+    // Uses a short pre-scan to confirm the device is in range.
+    (async () => {
+      try {
+        const savedId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+        const savedName = await AsyncStorage.getItem(DEVICE_NAME_KEY);
+        if (!isMounted.current) return;
+        if (savedId) {
+          setDevice(savedId, savedName);
+
+          const hasPermission = await requestBlePermissions();
+          if (!hasPermission) return;
+
+          const found = await new Promise<boolean>((resolve) => {
+            let done = false;
+            const timeout = setTimeout(() => {
+              if (done) return;
+              done = true;
+              ble.stopScan();
+              resolve(false);
+            }, 15_000);
+
+            void ble.startScan((d) => {
+              if (done) return;
+              if (d.id === savedId) {
+                done = true;
+                clearTimeout(timeout);
+                ble.stopScan();
+                resolve(true);
+              }
+            });
+          });
+
+          if (found) {
+            await ble.connect(savedId);
+          }
+        }
+      } catch {
+        // Ignore on startup; user can connect manually.
+      }
+    })();
+
     const unsubState = ble.onConnectionStateChange((state) => {
       if (!isMounted.current) return;
       setConnectionStatus(state);
@@ -72,6 +114,10 @@ export function useBleConnection() {
     await getBleService().startScan(onDeviceFound);
   }
 
+  function stopScan(): void {
+    getBleService().stopScan();
+  }
+
   async function connect(deviceId: string, deviceName?: string | null): Promise<void> {
     await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
     if (deviceName) await AsyncStorage.setItem(DEVICE_NAME_KEY, deviceName);
@@ -90,5 +136,5 @@ export function useBleConnection() {
     await getBleService().writeToDevice(message);
   }
 
-  return { startScan, connect, disconnect, sendMessage };
+  return { startScan, stopScan, connect, disconnect, sendMessage };
 }

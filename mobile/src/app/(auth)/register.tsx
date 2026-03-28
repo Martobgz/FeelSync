@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,36 +11,58 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { register } from '@/src/services/api/auth-api';
+import { getOrCreateDeviceToken } from '@/src/services/storage/secure-storage';
 import { useAuthStore } from '@/src/stores/auth-store';
+import { useGuardianStore } from '@/src/stores/guardian-store';
 import { UserRole } from '@/src/types/auth';
 
 export default function RegisterScreen() {
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setLinkedPatient = useGuardianStore((s) => s.setLinkedPatient);
 
   const [role, setRole] = useState<UserRole | null>(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [patientUsername, setPatientUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const canSubmit =
     role !== null &&
     username.trim().length >= 3 &&
     email.includes('@') &&
-    password.length >= 6;
+    password.length >= 6 &&
+    (role !== 'GUARDIAN' || patientUsername.trim().length >= 3);
 
   async function handleRegister() {
     if (!canSubmit || !role) return;
     setIsLoading(true);
     setError('');
+    setSuccess('');
     try {
-      const result = await register({ username: username.trim(), email: email.trim(), password, role });
-      await setAuth(result.token, role);
+      const deviceToken = await getOrCreateDeviceToken();
+      const result = await register({
+        username: username.trim(),
+        email: email.trim(),
+        password,
+        role,
+        deviceToken,
+        patientUsername: role === 'GUARDIAN' ? patientUsername.trim() : undefined,
+      });
+      setSuccess(result.message || 'Account created successfully!');
+      if (role === 'GUARDIAN' && patientUsername.trim()) {
+        await setLinkedPatient(patientUsername.trim());
+      }
+      setTimeout(() => setAuth(result.token, role), 1500);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Registration failed. Please try again.';
+      console.error('[Register] error:', JSON.stringify(err, null, 2));
+      const axiosErr = err as { message?: string; response?: { status?: number; data?: { message?: string } } };
+      console.error('[Register] message:', axiosErr?.message);
+      console.error('[Register] status:', axiosErr?.response?.status);
+      console.error('[Register] data:', JSON.stringify(axiosErr?.response?.data));
+      const msg = axiosErr?.response?.data?.message ?? axiosErr?.message ?? 'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -65,7 +86,7 @@ export default function RegisterScreen() {
             <Text className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
               I am a...
             </Text>
-            <View className="mb-6 flex-row gap-3">
+            <View className="mb-3 flex-row gap-3">
               <TouchableOpacity
                 onPress={() => setRole('PATIENT')}
                 className={`flex-1 items-center rounded-2xl border-2 py-4 ${
@@ -74,10 +95,7 @@ export default function RegisterScreen() {
                     : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
                 }`}>
                 <Text className="text-2xl">🩺</Text>
-                <Text
-                  className={`mt-1 text-sm font-semibold ${
-                    role === 'PATIENT' ? 'text-brand-primary' : 'text-gray-700 dark:text-gray-300'
-                  }`}>
+                <Text className={`mt-1 text-sm font-semibold ${role === 'PATIENT' ? 'text-brand-primary' : 'text-gray-700 dark:text-gray-300'}`}>
                   Patient
                 </Text>
                 <Text className="mt-0.5 text-center text-xs text-gray-400 dark:text-gray-500">
@@ -93,10 +111,7 @@ export default function RegisterScreen() {
                     : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
                 }`}>
                 <Text className="text-2xl">👥</Text>
-                <Text
-                  className={`mt-1 text-sm font-semibold ${
-                    role === 'GUARDIAN' ? 'text-brand-primary' : 'text-gray-700 dark:text-gray-300'
-                  }`}>
+                <Text className={`mt-1 text-sm font-semibold ${role === 'GUARDIAN' ? 'text-brand-primary' : 'text-gray-700 dark:text-gray-300'}`}>
                   Guardian
                 </Text>
                 <Text className="mt-0.5 text-center text-xs text-gray-400 dark:text-gray-500">
@@ -104,6 +119,16 @@ export default function RegisterScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {role === null && (
+              <Text className="mb-4 text-xs text-gray-400 dark:text-gray-500">Select a role to continue</Text>
+            )}
+
+            {success ? (
+              <View className="mb-4 rounded-xl bg-green-50 px-4 py-3">
+                <Text className="text-sm font-medium text-green-700">{success}</Text>
+              </View>
+            ) : null}
 
             {error ? (
               <View className="mb-4 rounded-xl bg-red-50 px-4 py-3">
@@ -115,12 +140,15 @@ export default function RegisterScreen() {
             <TextInput
               value={username}
               onChangeText={setUsername}
-              placeholder="At least 3 characters"
+              placeholder="e.g. johndoe"
               placeholderTextColor="#9ca3af"
               autoCapitalize="none"
               autoCorrect={false}
-              className="mb-4 rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
             />
+            <Text className={`mb-4 mt-1 text-xs ${username.length > 0 && username.trim().length < 3 ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+              At least 3 characters
+            </Text>
 
             <Text className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Email</Text>
             <TextInput
@@ -130,18 +158,42 @@ export default function RegisterScreen() {
               placeholderTextColor="#9ca3af"
               autoCapitalize="none"
               keyboardType="email-address"
-              className="mb-4 rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
             />
+            <Text className={`mb-4 mt-1 text-xs ${email.length > 0 && !email.includes('@') ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+              Must be a valid email address
+            </Text>
 
             <Text className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Password</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="At least 6 characters"
+              placeholder="••••••"
               placeholderTextColor="#9ca3af"
               secureTextEntry
-              className="mb-6 rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
             />
+            <Text className={`mb-6 mt-1 text-xs ${password.length > 0 && password.length < 6 ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+              At least 6 characters
+            </Text>
+
+            {role === 'GUARDIAN' && (
+              <>
+                <Text className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Patient Username</Text>
+                <TextInput
+                  value={patientUsername}
+                  onChangeText={setPatientUsername}
+                  placeholder="e.g. johndoe"
+                  placeholderTextColor="#9ca3af"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
+                />
+                <Text className={`mb-6 mt-1 text-xs ${patientUsername.length > 0 && patientUsername.trim().length < 3 ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  Username of the patient you monitor
+                </Text>
+              </>
+            )}
 
             <TouchableOpacity
               onPress={handleRegister}
@@ -154,12 +206,6 @@ export default function RegisterScreen() {
               )}
             </TouchableOpacity>
 
-            <View className="mt-6 flex-row justify-center">
-              <Text className="text-sm text-gray-500 dark:text-gray-400">Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.replace('/(auth)/login' as never)}>
-                <Text className="text-sm font-semibold text-brand-primary">Sign In</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

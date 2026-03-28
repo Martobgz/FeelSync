@@ -9,6 +9,11 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+if (__DEV__) {
+  // Helps debug common 404s caused by wrong EXPO_PUBLIC_API_BASE_URL.
+  console.log('[API] baseURL =', apiClient.defaults.baseURL);
+}
+
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) {

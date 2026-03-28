@@ -27,12 +27,36 @@ public class User {
     @Column(name = "expo_push_token", length = 255)
     private String expoPushToken;
 
+    @Column(name = "device_token", unique = true, length = 36)
+    private String deviceToken;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, unique = false)
+    private UserType type;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "patient_id", nullable = true)
+    private User patient;
 
     public User(String username, String email, String passwordHash, String expoPushToken) {
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.expoPushToken = expoPushToken;
+    }
+
+    public User(String username, String email, String passwordHash,
+                String expoPushToken, UserType type, User patient, String deviceToken) {
+        this.username = username;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.expoPushToken = expoPushToken;
+        this.type = type;
+        this.patient = patient;
+        this.deviceToken = deviceToken;
+    }
+
+    public UserType getUserType() {
+        return type;
     }
 }
