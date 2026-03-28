@@ -2,6 +2,7 @@ import { BleManager as RNBleManager, Device, Subscription } from 'react-native-b
 
 import { Config } from '@/src/constants/config';
 import { BLE_UUIDS } from '@/src/constants/ble-uuids';
+import { postMeasurement } from '@/src/services/api/measurements-api';
 import {
   BleConnectionState,
   BleServiceInterface,
@@ -10,6 +11,7 @@ import {
   ScannedDevice,
 } from './ble-types';
 import { BleReconnect } from './ble-reconnect';
+import { movementFromEspValue, parseEsp32BlePacket } from './esp32-biodata';
 
 type HrCallback = (r: ParsedHeartRate) => void;
 type AccelCallback = (r: ParsedAccelerometer) => void;
@@ -46,6 +48,7 @@ export class RealBleManager implements BleServiceInterface {
   private connectionState: BleConnectionState = 'disconnected';
   private reconnect = new BleReconnect();
   private scanTimeout: ReturnType<typeof setTimeout> | null = null;
+  private connectInProgress = false;
 
   // Discovered at runtime after connecting — not hardcoded
   private rxServiceUUID: string | null = null;
@@ -56,6 +59,15 @@ export class RealBleManager implements BleServiceInterface {
   private batteryCallbacks: Set<BatteryCallback> = new Set();
   private stateCallbacks: Set<StateCallback> = new Set();
   private subscriptions: Subscription[] = [];
+
+  // MeasurementRequest requires pulse+spo2+movement all non-null.
+  private latestMeasurement: {
+    pulse?: number;
+    spo2?: number;
+    movement?: 'STILL' | 'WALKING' | 'RUNNING';
+    gsrState?: number;
+  } = {};
+  private lastMeasurementPostedAt = 0;
 
   constructor() {
     this.manager = new RNBleManager();
@@ -113,30 +125,112 @@ export class RealBleManager implements BleServiceInterface {
   // ─── Connect ────────────────────────────────────────────────────────────────
 
   async connect(deviceId: string): Promise<void> {
+    // Prevent overlapping connect attempts
+    if (this.connectInProgress) {
+      console.log('[BLE] connect() skipped — already in progress');
+      return;
+    }
+    if (this.connectionState === 'connected') {
+      console.log('[BLE] connect() skipped — already connected');
+      return;
+    }
+
+    this.connectInProgress = true;
     this.stopScan();
     this.setState('connecting');
 
-    const device = await this.manager.connectToDevice(deviceId, {
-      requestMTU: Config.BLE_MTU,
-    });
+    try {
+      // Cancel any stale OS-level connection left over from a previous app session.
+      // This makes the ESP32 fire onDisconnect → re-advertise, so we can reconnect
+      // without needing a physical reset.
+      try {
+        const stale = await this.manager.isDeviceConnected(deviceId);
+        if (stale) {
+          console.log('[BLE] Cancelling stale connection before reconnecting');
+          await this.manager.cancelDeviceConnection(deviceId);
+          // Give the ESP32 time to process the disconnect and start re-advertising
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      } catch {
+        // Device wasn't connected at OS level — that's fine
+      }
 
-    await device.discoverAllServicesAndCharacteristics();
-    this.connectedDevice = device;
-    this.setState('connected');
-    this.reconnect.onConnected();
+      const device = await this.manager.connectToDevice(deviceId, {
+        requestMTU: Config.BLE_MTU,
+      });
 
-    // Walk all discovered services/characteristics dynamically
-    await this.discoverAndSubscribe(device);
+      await device.discoverAllServicesAndCharacteristics();
+      this.connectedDevice = device;
+      this.setState('connected');
+      this.reconnect.onConnected();
 
-    // Handle unexpected disconnect
-    device.onDisconnected((_error, _d) => {
+      // Walk all discovered services/characteristics dynamically
+      await this.discoverAndSubscribe(device);
+
+      // Handle unexpected disconnect
+      device.onDisconnected((_error, _d) => {
+        this.connectedDevice = null;
+        this.rxServiceUUID = null;
+        this.rxCharUUID = null;
+        this.connectInProgress = false;
+        this.setState('disconnected');
+        this.clearSubscriptions();
+        this.reconnect.scheduleNextAttempt(() => this.reconnectWithPreScan(deviceId));
+      });
+    } catch (err) {
       this.connectedDevice = null;
       this.rxServiceUUID = null;
       this.rxCharUUID = null;
       this.setState('disconnected');
-      this.clearSubscriptions();
-      this.reconnect.scheduleNextAttempt(() => this.connect(deviceId));
-    });
+      throw err;
+    } finally {
+      this.connectInProgress = false;
+    }
+  }
+
+  private async reconnectWithPreScan(deviceId: string): Promise<void> {
+    // Scan up to 15s to verify the device is in range before reconnecting.
+    try {
+      this.setState('scanning');
+      const found = await new Promise<boolean>((resolve) => {
+        let done = false;
+        const timeout = setTimeout(() => {
+          if (done) return;
+          done = true;
+          this.manager.stopDeviceScan();
+          resolve(false);
+        }, 15_000);
+
+        this.manager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
+          if (done) return;
+          if (error) {
+            done = true;
+            clearTimeout(timeout);
+            this.manager.stopDeviceScan();
+            resolve(false);
+            return;
+          }
+          if (!device) return;
+          if (device.id === deviceId) {
+            done = true;
+            clearTimeout(timeout);
+            this.manager.stopDeviceScan();
+            resolve(true);
+          }
+        });
+      });
+
+      if (!found) {
+        this.setState('disconnected');
+        this.reconnect.scheduleNextAttempt(() => this.reconnectWithPreScan(deviceId));
+        return;
+      }
+
+      await this.connect(deviceId);
+    } catch {
+      this.setState('disconnected');
+      this.reconnect.scheduleNextAttempt(() => this.reconnectWithPreScan(deviceId));
+    }
   }
 
   // ─── Dynamic service discovery ──────────────────────────────────────────────
@@ -151,8 +245,8 @@ export class RealBleManager implements BleServiceInterface {
       for (const char of chars) {
         const charUUID = char.uuid.toLowerCase();
 
-        // First writable characteristic found → RX channel (commands phone → device)
-        if (char.isWritableWithResponse && !this.rxCharUUID) {
+        // RX channel — match by known UUID (commands phone → device)
+        if (charUUID === BLE_UUIDS.FEELSYNC_RX.toLowerCase()) {
           this.rxServiceUUID = svcUUID;
           this.rxCharUUID = charUUID;
         }
@@ -187,7 +281,46 @@ export class RealBleManager implements BleServiceInterface {
   }
 
   private handleCharacteristicUpdate(charUUID: string, bytes: number[]): void {
+    console.log(`[BLE IN] char=${charUUID} bytes=[${bytes.join(',')}]`);
     switch (charUUID) {
+      case BLE_UUIDS.FEELSYNC_BIODATA: {
+        const pkt = parseEsp32BlePacket(bytes);
+        console.log('[BLE PARSED]', pkt ? `type=${pkt.type} value=${pkt.value}` : 'null (unrecognised type)');
+        if (!pkt) return;
+
+        if (pkt.type === 'pulse') this.latestMeasurement.pulse = pkt.value;
+        if (pkt.type === 'spo2') this.latestMeasurement.spo2 = pkt.value;
+        if (pkt.type === 'movement') this.latestMeasurement.movement = movementFromEspValue(pkt.value);
+        if (pkt.type === 'gsr') this.latestMeasurement.gsrState = pkt.value;
+
+        const { pulse, spo2, movement, gsrState } = this.latestMeasurement;
+        console.log('[BLE ACCUM]', { pulse, spo2, movement, gsrState });
+        if (pulse == null || spo2 == null || movement == null) return;
+
+        // Throttle a bit so we don't POST on every notify burst.
+        const now = Date.now();
+        if (now - this.lastMeasurementPostedAt < 900) return;
+        this.lastMeasurementPostedAt = now;
+
+        void (async () => {
+          const payload = {
+            timestamp: new Date(now).toISOString(),
+            pulse,
+            spo2,
+            movement,
+            gsrState,
+          };
+          console.log('[BLE POST] →', JSON.stringify(payload));
+          try {
+            await postMeasurement(payload);
+            console.log('[BLE POST] ✓ measurement accepted');
+          } catch (err) {
+            console.warn('[BLE POST] ✗ failed:', err);
+          }
+        })();
+
+        break;
+      }
       case BLE_UUIDS.HEART_RATE_MEASUREMENT: {
         const bpm = parseHeartRate(bytes);
         this.hrCallbacks.forEach((cb) => cb({ bpm, timestamp: Date.now() }));

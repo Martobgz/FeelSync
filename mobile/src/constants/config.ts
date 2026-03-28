@@ -1,5 +1,5 @@
 export const Config = {
-  API_BASE_URL: __DEV__ ? 'http://10.0.2.2:8080/api' : 'https://api.feelsync.app/api',
+  API_BASE_URL: 'https://home-server.tailbcaeb8.ts.net/api',
   SYNC_INTERVAL_MS: 60 * 60 * 1000,
   AGGREGATION_WINDOW_MS: 5 * 60 * 1000,
   BUFFER_CAPACITY: 300,

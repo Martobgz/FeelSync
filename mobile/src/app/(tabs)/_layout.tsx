@@ -40,13 +40,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="pills.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="live-hr"
-        options={{
-          title: 'Live HR',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="waveform.path.ecg" color={color} />,
-        }}
-      />
     </Tabs>
   );
 }

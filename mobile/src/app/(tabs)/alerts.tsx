@@ -57,37 +57,44 @@ const SEVERITY: Record<AlertSeverity, {
 
 // ─── AlertCard ───────────────────────────────────────────────────────────────
 
-function AlertCard({ alert, onPress }: { alert: Alert; onPress: () => void }) {
+function AlertCard({ alert, onPress, onRemove }: { alert: Alert; onPress: () => void; onRemove: () => void }) {
   const s = SEVERITY[alert.severity];
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.75}
-      className={`mb-3 rounded-xl border-l-4 px-4 py-3 ${s.border} ${alert.read ? s.readBg : s.unreadBg}`}>
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          {!alert.read && (
-            <View className="h-2 w-2 rounded-full bg-brand-primary" />
-          )}
-          <View className={`rounded-full px-2 py-0.5 ${s.pillBg}`}>
-            <Text className={`text-xs font-semibold ${s.pillText}`}>
-              {TYPE_LABEL[alert.type]}
+    <View className={`mb-3 rounded-xl border-l-4 ${s.border} ${alert.read ? s.readBg : s.unreadBg}`}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.75}
+        className="px-4 py-3">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2">
+            {!alert.read && (
+              <View className="h-2 w-2 rounded-full bg-brand-primary" />
+            )}
+            <View className={`rounded-full px-2 py-0.5 ${s.pillBg}`}>
+              <Text className={`text-xs font-semibold ${s.pillText}`}>
+                {TYPE_LABEL[alert.type]}
+              </Text>
+            </View>
+            <Text
+              className="flex-1 text-sm font-semibold text-gray-900 dark:text-white"
+              numberOfLines={1}>
+              {alert.title}
             </Text>
           </View>
-          <Text
-            className="flex-1 text-sm font-semibold text-gray-900 dark:text-white"
-            numberOfLines={1}>
-            {alert.title}
-          </Text>
+          <View className="flex-row items-center gap-3">
+            <Text className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+              {relativeTime(alert.timestamp)}
+            </Text>
+            <TouchableOpacity onPress={onRemove} hitSlop={8}>
+              <Text className="text-xs font-semibold text-red-400">Remove</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text className="ml-2 shrink-0 text-xs text-gray-400 dark:text-gray-500">
-          {relativeTime(alert.timestamp)}
+        <Text className="mt-1.5 text-sm leading-5 text-gray-600 dark:text-gray-300">
+          {alert.body}
         </Text>
-      </View>
-      <Text className="mt-1.5 text-sm leading-5 text-gray-600 dark:text-gray-300">
-        {alert.body}
-      </Text>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -98,6 +105,7 @@ export default function AlertsScreen() {
   const unreadCount = useAlertsStore((s) => s.unreadCount);
   const markRead = useAlertsStore((s) => s.markRead);
   const markAllRead = useAlertsStore((s) => s.markAllRead);
+  const removeAlert = useAlertsStore((s) => s.removeAlert);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100 dark:bg-gray-900">
@@ -116,7 +124,11 @@ export default function AlertsScreen() {
           data={alerts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <AlertCard alert={item} onPress={() => markRead(item.id)} />
+            <AlertCard
+              alert={item}
+              onPress={() => markRead(item.id)}
+              onRemove={() => removeAlert(item.id)}
+            />
           )}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

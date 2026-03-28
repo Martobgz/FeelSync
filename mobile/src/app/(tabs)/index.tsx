@@ -1,9 +1,11 @@
+import { router } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HeartRateChart } from '@/src/components/charts/heart-rate-chart';
-import { SleepChart } from '@/src/components/charts/sleep-chart';
-import { useBiometricsChart } from '@/src/hooks/use-biometrics-chart';
+import { PulseChart } from '@/src/components/charts/pulse-chart';
+import { Spo2Chart } from '@/src/components/charts/spo2-chart';
+import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { usePatientMeasurements } from '@/src/hooks/use-patient-measurements';
 import { ChartPeriod } from '@/src/types/biometric';
 
 const PERIODS: { label: string; value: ChartPeriod }[] = [
@@ -12,7 +14,7 @@ const PERIODS: { label: string; value: ChartPeriod }[] = [
 ];
 
 export default function HomeScreen() {
-  const { hrData, sleepData, period, loading, error, setPeriod, refresh } = useBiometricsChart();
+  const { pulseData, spo2Data, period, loading, error, setPeriod, refresh } = usePatientMeasurements();
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100 dark:bg-gray-900">
@@ -28,6 +30,14 @@ export default function HomeScreen() {
           <Text className="text-3xl font-bold text-gray-900 dark:text-white">Home</Text>
           {loading && <ActivityIndicator color="#1D9E75" />}
         </View>
+
+        {/* Pair device button */}
+        <TouchableOpacity
+          onPress={() => router.push('/(patient-onboarding)/pair-device')}
+          className="mb-5 flex-row items-center justify-center gap-2 rounded-2xl bg-white py-4 shadow-sm dark:bg-gray-800">
+          <IconSymbol name="antenna.radiowaves.left.and.right" size={22} color="#1D9E75" />
+          <Text className="text-base font-semibold text-brand-primary">Pair Bluetooth Device</Text>
+        </TouchableOpacity>
 
         {/* Period switcher */}
         <View className="mb-5 flex-row gap-2">
@@ -62,8 +72,8 @@ export default function HomeScreen() {
         )}
 
         {/* Charts */}
-        <HeartRateChart data={hrData} />
-        <SleepChart data={sleepData} />
+        <PulseChart data={pulseData} />
+        <Spo2Chart data={spo2Data} />
 
       </ScrollView>
     </SafeAreaView>

@@ -3,50 +3,26 @@ import { Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BatteryCard } from '@/src/components/battery-card';
-import { BleDeviceScanner } from '@/src/components/ble-device-scanner';
 import { BleStatusIndicator } from '@/src/components/ble-status-indicator';
-import { ConnectionCard } from '@/src/components/connection-card';
 import { HeartRateCard } from '@/src/components/heart-rate-card';
 import { MedicationCard } from '@/src/components/medication-card';
-import { SyncStatusCard } from '@/src/components/sync-status-card';
-import { useBleConnection } from '@/src/hooks/use-ble-connection';
-import { useSync } from '@/src/hooks/use-sync';
-import { ScannedDevice } from '@/src/services/ble/ble-types';
+import { getBleService } from '@/src/services/ble';
 import { useBleStore } from '@/src/stores/ble-store';
 import { useMedicationsStore } from '@/src/stores/medications-store';
 
 export default function PatientHomeScreen() {
-  const { startScan, connect, disconnect, sendMessage } = useBleConnection();
-  const { status: syncStatus, pendingCount, lastSyncTime } = useSync();
-
   const connectionStatus = useBleStore((s) => s.connectionStatus);
-  const deviceName = useBleStore((s) => s.deviceName);
   const batteryLevel = useBleStore((s) => s.batteryLevel);
   const lastHeartRate = useBleStore((s) => s.lastHeartRate);
 
   const medications = useMedicationsStore((s) => s.medications);
   const fetchMedications = useMedicationsStore((s) => s.fetchMedications);
 
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [foundDevices, setFoundDevices] = useState<ScannedDevice[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchMedications();
   }, [fetchMedications]);
-
-  async function handleConnect() {
-    setFoundDevices([]);
-    setScannerVisible(true);
-    await startScan((device) => {
-      setFoundDevices((prev) => (prev.some((d) => d.id === device.id) ? prev : [...prev, device]));
-    });
-  }
-
-  async function handleSelectDevice(device: ScannedDevice) {
-    setScannerVisible(false);
-    await connect(device.id, device.name);
-  }
 
   async function handleRefresh() {
     setIsRefreshing(true);
@@ -71,30 +47,10 @@ export default function PatientHomeScreen() {
           <BleStatusIndicator status={connectionStatus} size={14} />
         </View>
 
-        {/* Connection card */}
-        <View className="mb-4">
-          <ConnectionCard
-            status={connectionStatus}
-            deviceName={deviceName}
-            batteryLevel={batteryLevel}
-            onConnect={handleConnect}
-            onDisconnect={disconnect}
-          />
-        </View>
-
         {/* Heart Rate + Battery row */}
         <View className="mb-4 flex-row gap-3">
           <HeartRateCard bpm={lastHeartRate} />
           <BatteryCard level={batteryLevel} />
-        </View>
-
-        {/* Sync status */}
-        <View className="mb-4">
-          <SyncStatusCard
-            status={syncStatus}
-            pendingCount={pendingCount}
-            lastSyncTime={lastSyncTime}
-          />
         </View>
 
         {/* BLE test button */}
@@ -103,9 +59,9 @@ export default function PatientHomeScreen() {
             <TouchableOpacity
               className="rounded-xl bg-indigo-500 px-4 py-3 active:opacity-70"
               onPress={() =>
-                sendMessage('VIBRATE').catch((e) =>
-                  Alert.alert('Write failed', String(e))
-                )
+                getBleService()
+                  .writeToDevice('VIBRATE')
+                  .catch((e) => Alert.alert('Write failed', String(e)))
               }>
               <Text className="text-center font-semibold text-white">Vibrate wristband</Text>
             </TouchableOpacity>
@@ -130,13 +86,6 @@ export default function PatientHomeScreen() {
         )}
 
       </ScrollView>
-
-      <BleDeviceScanner
-        visible={scannerVisible}
-        devices={foundDevices}
-        onClose={() => setScannerVisible(false)}
-        onSelectDevice={handleSelectDevice}
-      />
     </SafeAreaView>
   );
 }

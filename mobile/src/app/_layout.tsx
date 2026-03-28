@@ -12,6 +12,7 @@ import { initDatabase } from '@/src/services/storage/database';
 import { useAlertsStore } from '@/src/stores/alerts-store';
 import { useAuthStore } from '@/src/stores/auth-store';
 import { useBleStore } from '@/src/stores/ble-store';
+import { useGuardianStore } from '@/src/stores/guardian-store';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -55,11 +56,13 @@ export default function RootLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const role = useAuthStore((s) => s.role);
   const deviceId = useBleStore((s) => s.deviceId);
+  const linkedPatientUsername = useGuardianStore((s) => s.linkedPatientUsername);
+  const loadLinkedPatient = useGuardianStore((s) => s.loadLinkedPatient);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    Promise.all([initializeApp(), loadStoredAuth()]).finally(() => setIsReady(true));
-  }, [loadStoredAuth]);
+    Promise.all([initializeApp(), loadStoredAuth(), loadLinkedPatient()]).finally(() => setIsReady(true));
+  }, [loadStoredAuth, loadLinkedPatient]);
 
   useEffect(() => {
     const sub1 = Notifications.addNotificationReceivedListener((notification) => {
@@ -79,21 +82,18 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!isReady) return;
-    // DEV BYPASS: remove this block to re-enable auth
-    if (__DEV__) {
-      router.replace('/(patient-tabs)/' as never);
-      return;
-    }
     if (!isAuthenticated) {
-      router.replace('/(auth)/login' as never);
+      router.replace('/(auth)/register' as never);
     } else if (role === 'PATIENT' && !deviceId) {
       router.replace('/(patient-onboarding)/pair-device' as never);
     } else if (role === 'PATIENT') {
       router.replace('/(patient-tabs)/' as never);
+    } else if (role === 'GUARDIAN' && !linkedPatientUsername) {
+      router.replace('/(guardian-onboarding)/link-patient' as never);
     } else {
       router.replace('/(tabs)/' as never);
     }
-  }, [isReady, isAuthenticated, role, deviceId]);
+  }, [isReady, isAuthenticated, role, deviceId, linkedPatientUsername]);
 
   if (!isReady) return null;
 
@@ -102,13 +102,33 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(patient-onboarding)" />
+        <Stack.Screen name="(guardian-onboarding)" />
         <Stack.Screen name="(patient-tabs)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
+      <SignupButton />
       {__DEV__ && <DevRoleSwitch />}
       <StatusBar style="auto" />
     </ThemeProvider>
+  );
+}
+
+function SignupButton() {
+  return (
+    <View style={{ position: 'absolute', top: 52, left: 12, zIndex: 999 }}>
+      <TouchableOpacity
+        onPress={() => router.push('/(auth)/register' as never)}
+        style={{
+          backgroundColor: '#1D9E75',
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 12,
+          opacity: 0.85,
+        }}>
+        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>+ Sign Up</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 

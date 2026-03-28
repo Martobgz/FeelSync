@@ -3,6 +3,8 @@ export const BLE_UUIDS = {
   // FeelSync wristband (ESP32 custom service)
   FEELSYNC_SERVICE: '12345678-1234-1234-1234-1234567890ab',
   FEELSYNC_RX: 'abcdefab-1234-1234-1234-abcdefabcdef', // phone → ESP32 (WRITE-only)
+  // ESP32 → phone (NOTIFY) for biodata packets (BlePacket { uint16 type, uint16 value })
+  FEELSYNC_BIODATA: 'abcd1234-5678-90ab-cdef-1234567890ab',
 
   // Standard GATT — reserved for when real sensors are added to the ESP32
   HEART_RATE_SERVICE: '0000180d-0000-1000-8000-00805f9b34fb',
