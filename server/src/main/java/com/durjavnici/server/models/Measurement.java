@@ -28,6 +28,9 @@ public class Measurement {
     @Column(nullable = false)
     private MovementType movement;
 
+    @Column(name = "gsr_state")
+    private Integer gsrState;
+
     @Column(name = "timestamp", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -36,10 +39,11 @@ public class Measurement {
     @JsonIgnore
     private User user;
 
-    public Measurement(Float pulse, Float spo2, MovementType movement, User user) {
+    public Measurement(Float pulse, Float spo2, MovementType movement, Integer gsrState, User user) {
         this.pulse = pulse;
         this.spo2 = spo2;
         this.movement = movement;
+        this.gsrState = gsrState;
         this.user = user;
     }
 }

@@ -1,5 +1,15 @@
+function normalizeApiBaseUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim().replace(/\/+$/, '');
+  // Our Spring controllers are mounted under /api/*.
+  // If the env var is set to just http(s)://host:port, append /api.
+  if (/\/api(\/|$)/.test(trimmed)) return trimmed;
+  return `${trimmed}/api`;
+}
+
 export const Config = {
-  API_BASE_URL: 'https://home-server.tailbcaeb8.ts.net/api',
+  API_BASE_URL: normalizeApiBaseUrl(
+    process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.100.5:8888/api'
+  ),
   SYNC_INTERVAL_MS: 60 * 60 * 1000,
   AGGREGATION_WINDOW_MS: 5 * 60 * 1000,
   BUFFER_CAPACITY: 300,

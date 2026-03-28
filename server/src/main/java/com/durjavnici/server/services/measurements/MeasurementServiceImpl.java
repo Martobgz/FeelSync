@@ -1,7 +1,9 @@
 package com.durjavnici.server.services.measurements;
 
+import com.durjavnici.server.dtos.GsrDistribution;
 import com.durjavnici.server.dtos.MeasurementRequest;
-import com.durjavnici.server.dtos.MeasurementResponse;
+import com.durjavnici.server.dtos.NightlySleepEntry;
+import com.durjavnici.server.dtos.TimestampedPulse;
 import com.durjavnici.server.models.Measurement;
 import com.durjavnici.server.models.MovementType;
 import com.durjavnici.server.models.User;
@@ -15,12 +17,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.DoubleSummaryStatistics;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.DoubleSummaryStatistics;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,9 @@ public class MeasurementServiceImpl implements MeasurementService {
     private static final double HEART_RATE_STDDEV_MULTIPLIER_THRESHOLD = 2.0;
     private static final double HEART_RATE_MULTIPLIER_THRESHOLD = 1.6;
     private static final double HIGH_READINGS_PERCENT_THRESHOLD = 70.0;
+
+    /** Minutes represented by each measurement (ESP32 SEND_INTERVAL_MS = 300 000 ms). */
+    private static final double MINUTES_PER_READING = 5.0;
 
     private final MeasurementRepository measurementRepository;
     private final UserStatsRepository userStatsRepository;
@@ -41,10 +46,87 @@ public class MeasurementServiceImpl implements MeasurementService {
                 request.getPulse(),
                 request.getSpo2(),
                 request.getMovement(),
+                request.getGsrState(),
                 authenticatedUser
         );
         return measurementRepository.save(measurement);
     }
+
+    // ─── Guardian endpoints ──────────────────────────────────────────────────────
+
+    @Override
+    public List<TimestampedPulse> getPulse(User patient, int days) {
+        if (patient == null) throw new IllegalArgumentException("Patient cannot be null");
+
+        Instant from = Instant.now().minus(days, ChronoUnit.DAYS);
+        return measurementRepository
+                .findByUserIdAndCreatedAtAfter(patient.getId(), from)
+                .stream()
+                .map(m -> new TimestampedPulse(m.getCreatedAt().toString(), m.getPulse()))
+                .toList();
+    }
+
+    @Override
+    public List<NightlySleepEntry> getSleep(User patient, int days) {
+        if (patient == null) throw new IllegalArgumentException("Patient cannot be null");
+
+        Instant from = Instant.now().minus(days, ChronoUnit.DAYS);
+        List<Measurement> measurements = measurementRepository
+                .findByUserIdAndCreatedAtAfter(patient.getId(), from);
+
+        // Sleep = STILL movement during nighttime (22:00–08:00 UTC).
+        // Each reading represents MINUTES_PER_READING minutes of data.
+        // Night date = calendar date of the 22:00 start (readings from 00:00–07:59 belong to the previous date).
+        Map<String, Long> stillCountByNight = new LinkedHashMap<>();
+
+        for (Measurement m : measurements) {
+            if (m.getMovement() != MovementType.STILL) continue;
+
+            ZonedDateTime zdt = m.getCreatedAt().atZone(ZoneOffset.UTC);
+            int hour = zdt.getHour();
+
+            if (hour >= 22 || hour < 8) {
+                String nightDate = (hour >= 22)
+                        ? zdt.toLocalDate().toString()
+                        : zdt.toLocalDate().minusDays(1).toString();
+                stillCountByNight.merge(nightDate, 1L, Long::sum);
+            }
+        }
+
+        return stillCountByNight.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> {
+                    double hours = Math.round((e.getValue() * MINUTES_PER_READING / 60.0) * 10.0) / 10.0;
+                    boolean anomaly = hours < 5.0 || hours > 10.0;
+                    return new NightlySleepEntry(e.getKey(), hours, anomaly);
+                })
+                .toList();
+    }
+
+    @Override
+    public GsrDistribution getGsr(User patient, int days) {
+        if (patient == null) throw new IllegalArgumentException("Patient cannot be null");
+
+        Instant from = Instant.now().minus(days, ChronoUnit.DAYS);
+        List<Measurement> measurements = measurementRepository
+                .findByUserIdAndCreatedAtAfter(patient.getId(), from);
+
+        int normal = 0, tense = 0, stressed = 0, calm = 0, happy = 0;
+        for (Measurement m : measurements) {
+            Integer state = m.getGsrState();
+            if (state == null) continue;
+            switch (state) {
+                case 1 -> normal++;
+                case 2 -> tense++;
+                case 3 -> stressed++;
+                case 4 -> calm++;
+                case 5 -> happy++;
+            }
+        }
+        return new GsrDistribution(normal, tense, stressed, calm, happy);
+    }
+
+    // ─── Scheduled risk detection ────────────────────────────────────────────────
 
     @Scheduled(fixedDelayString = "${measurements.check.interval-ms:900000}")
     public void checkAllUsersState() {
@@ -52,13 +134,11 @@ public class MeasurementServiceImpl implements MeasurementService {
 
         for (UserStats stats : allStats) {
             Long userId = stats.getUser().getId();
-
             boolean isAtRisk = checkUserState(userId);
 
             if (isAtRisk) {
                 System.out.println("User " + userId + " is at risk!");
-                // notificationService.sendRiskAlert(stats.getUser().getExpoPushToken(),
-                // "Your recent measurements indicate a potential health risk.");
+                // notificationService.sendRiskAlert(stats.getUser().getExpoPushToken(), "...");
             }
         }
     }
@@ -66,14 +146,10 @@ public class MeasurementServiceImpl implements MeasurementService {
     @Override
     public boolean checkUserState(Long userId) {
         Optional<UserStats> maybeStats = userStatsRepository.findByUserId(userId);
-        if (maybeStats.isEmpty()) {
-            return false;
-        }
+        if (maybeStats.isEmpty()) return false;
 
         List<Measurement> recentMeasurements = getRecentMeasurementsForUser(userId);
-        if (recentMeasurements.isEmpty()) {
-            return false;
-        }
+        if (recentMeasurements.isEmpty()) return false;
 
         return analyzeRecentMeasurements(recentMeasurements, maybeStats.get());
     }
@@ -86,9 +162,7 @@ public class MeasurementServiceImpl implements MeasurementService {
                 .collect(Collectors.groupingBy(Measurement::getUser));
 
         measurementsByUser.forEach((user, measurements) -> {
-            if (measurements.isEmpty()) {
-                return;
-            }
+            if (measurements.isEmpty()) return;
 
             DoubleSummaryStatistics stats = measurements.stream()
                     .map(Measurement::getPulse)
@@ -118,6 +192,8 @@ public class MeasurementServiceImpl implements MeasurementService {
         });
     }
 
+    // ─── Helpers ─────────────────────────────────────────────────────────────────
+
     private List<Measurement> getRecentMeasurementsForUser(Long userId) {
         Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
         return measurementRepository.findByUserIdAndCreatedAtAfter(userId, oneHourAgo);
@@ -127,76 +203,26 @@ public class MeasurementServiceImpl implements MeasurementService {
         double baselineAvg = baseline.getAverageHeartRate();
         double baselineStdDev = baseline.getHeartRateStdDev();
 
-        if (recentMeasurements.isEmpty()) {
-            return false;
-        }
+        if (recentMeasurements.isEmpty()) return false;
 
         long totalConsidered = 0;
         long highReadings = 0;
 
         for (Measurement measurement : recentMeasurements) {
-            if (!isLowActivity(measurement.getMovement())) {
-                continue;
-            }
+            if (measurement.getMovement() != MovementType.STILL) continue;
 
             totalConsidered++;
-
             double pulse = measurement.getPulse();
-            double stdDevBasedThreshold = baselineAvg + HEART_RATE_STDDEV_MULTIPLIER_THRESHOLD * baselineStdDev;
-            double multiplierThreshold = baselineAvg * HEART_RATE_MULTIPLIER_THRESHOLD;
-            double highThreshold = Math.max(stdDevBasedThreshold, multiplierThreshold);
+            double highThreshold = Math.max(
+                    baselineAvg + HEART_RATE_STDDEV_MULTIPLIER_THRESHOLD * baselineStdDev,
+                    baselineAvg * HEART_RATE_MULTIPLIER_THRESHOLD
+            );
 
-            if (pulse > highThreshold) {
-                highReadings++;
-            }
+            if (pulse > highThreshold) highReadings++;
         }
 
-        if (totalConsidered == 0) {
-            return false;
-        }
+        if (totalConsidered == 0) return false;
 
-        double highPercentage = (highReadings * 100.0d) / (double) totalConsidered;
-
-        return highPercentage >= HIGH_READINGS_PERCENT_THRESHOLD;
+        return (highReadings * 100.0d / totalConsidered) >= HIGH_READINGS_PERCENT_THRESHOLD;
     }
-
-    private boolean isLowActivity(MovementType movementType) {
-        return movementType == MovementType.STILL;
-    }
-
-    @Override
-    public MeasurementResponse getPulse(User patient, int days) {
-        if (patient == null) {
-            throw new IllegalArgumentException("Patient cannot be null");
-        }
-
-        Instant fromDate = Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS);
-
-        List<Measurement> measurements = measurementRepository
-                .findByUserIdAndCreatedAtAfter(patient.getId(), fromDate);
-
-        List<Float> pulseValues = measurements.stream()
-                .map(Measurement::getPulse)
-                .toList();
-
-        return new MeasurementResponse(pulseValues);
-    }
-
-        @Override
-        public MeasurementResponse getSpo2(User patient, int days) {
-            if (patient == null) {
-                throw new IllegalArgumentException("Patient cannot be null");
-            }
-
-            Instant fromDate = Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS);
-
-            List<Measurement> measurements = measurementRepository
-                    .findByUserIdAndCreatedAtAfter(patient.getId(), fromDate);
-
-            List<Float> spo2Values = measurements.stream()
-                    .map(Measurement::getSpo2)
-                    .toList();
-
-            return new MeasurementResponse(spo2Values);
-        }
-    }
+}

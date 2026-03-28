@@ -70,14 +70,14 @@ public class AuthServiceImpl implements AuthService {
                 encodedPassword,
                 request.getExpoPushToken(),
                 request.getUserType(),
-                patient
+                patient,
+                request.getDeviceToken()
         );
 
         userRepository.save(user);
 
-        String token = jwtProvider.generateToken(user.getUsername(), user.getEmail());
         log.info("User registered and authenticated: {}", user.getUsername());
 
-        return new AuthResponse(token, "User registered and authenticated successfully");
+        return new AuthResponse(request.getDeviceToken(), "User registered and authenticated successfully");
     }
 }

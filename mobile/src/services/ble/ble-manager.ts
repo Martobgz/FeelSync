@@ -1,4 +1,5 @@
 import { BleManager as RNBleManager, Device, Subscription } from 'react-native-ble-plx';
+import axios from 'axios';
 
 import { Config } from '@/src/constants/config';
 import { BLE_UUIDS } from '@/src/constants/ble-uuids';
@@ -17,6 +18,12 @@ type HrCallback = (r: ParsedHeartRate) => void;
 type AccelCallback = (r: ParsedAccelerometer) => void;
 type BatteryCallback = (level: number) => void;
 type StateCallback = (s: BleConnectionState) => void;
+
+function combineUrls(baseURL: string | undefined, relativeURL: string | undefined): string | undefined {
+  if (!relativeURL) return undefined;
+  if (!baseURL) return relativeURL;
+  return `${baseURL.replace(/\/+$/, '')}/${relativeURL.replace(/^\/+/, '')}`;
+}
 
 function base64ToBytes(b64: string): number[] {
   const binary = atob(b64);
@@ -288,7 +295,10 @@ export class RealBleManager implements BleServiceInterface {
         console.log('[BLE PARSED]', pkt ? `type=${pkt.type} value=${pkt.value}` : 'null (unrecognised type)');
         if (!pkt) return;
 
-        if (pkt.type === 'pulse') this.latestMeasurement.pulse = pkt.value;
+        if (pkt.type === 'pulse') {
+          this.latestMeasurement.pulse = pkt.value;
+          this.hrCallbacks.forEach((cb) => cb({ bpm: pkt.value, timestamp: pkt.timestamp }));
+        }
         if (pkt.type === 'spo2') this.latestMeasurement.spo2 = pkt.value;
         if (pkt.type === 'movement') this.latestMeasurement.movement = movementFromEspValue(pkt.value);
         if (pkt.type === 'gsr') this.latestMeasurement.gsrState = pkt.value;
@@ -315,7 +325,17 @@ export class RealBleManager implements BleServiceInterface {
             await postMeasurement(payload);
             console.log('[BLE POST] ✓ measurement accepted');
           } catch (err) {
-            console.warn('[BLE POST] ✗ failed:', err);
+            if (axios.isAxiosError(err)) {
+              const fullUrl = combineUrls(err.config?.baseURL, err.config?.url);
+              console.warn('[BLE POST] ✗ failed:', {
+                message: err.message,
+                status: err.response?.status,
+                url: fullUrl,
+                data: err.response?.data,
+              });
+            } else {
+              console.warn('[BLE POST] ✗ failed:', err);
+            }
           }
         })();
 

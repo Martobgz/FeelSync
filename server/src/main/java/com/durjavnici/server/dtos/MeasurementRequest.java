@@ -20,5 +20,8 @@ public class MeasurementRequest {
 
     @NotNull
     private MovementType movement;
+
+    // GSR-derived state from ESP32 (nullable — older clients may not send it)
+    private Integer gsrState;
 }
 

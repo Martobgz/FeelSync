@@ -57,7 +57,7 @@ Adafruit_MPU6050 mpu;
 #define PULSE_SAMPLE_MS 6000
 #define MOTION_SAMPLE_MS 100
 #define GSR_SAMPLE_MS 100
-#define SEND_INTERVAL_MS 30000  //5 minutes
+#define SEND_INTERVAL_MS 300000  //5 minutes
 #define DEFAULT_GSR_BASELINE 2400
 int gsr_baseline = DEFAULT_GSR_BASELINE;
 bool hasBleGsrBaseline = false;

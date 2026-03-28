@@ -29,4 +29,8 @@ public class RegisterRequest {
 
     @Size(max = 255)
     private String patientUsername;
+
+    @NotBlank
+    @Size(min = 36, max = 36)
+    private String deviceToken;
 }

@@ -56,7 +56,6 @@ export default function RootLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const role = useAuthStore((s) => s.role);
   const deviceId = useBleStore((s) => s.deviceId);
-  const linkedPatientUsername = useGuardianStore((s) => s.linkedPatientUsername);
   const loadLinkedPatient = useGuardianStore((s) => s.loadLinkedPatient);
   const [isReady, setIsReady] = useState(false);
 
@@ -88,12 +87,10 @@ export default function RootLayout() {
       router.replace('/(patient-onboarding)/pair-device' as never);
     } else if (role === 'PATIENT') {
       router.replace('/(patient-tabs)/' as never);
-    } else if (role === 'GUARDIAN' && !linkedPatientUsername) {
-      router.replace('/(guardian-onboarding)/link-patient' as never);
     } else {
       router.replace('/(tabs)/' as never);
     }
-  }, [isReady, isAuthenticated, role, deviceId, linkedPatientUsername]);
+  }, [isReady, isAuthenticated, role, deviceId]);
 
   if (!isReady) return null;
 
@@ -102,7 +99,6 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(patient-onboarding)" />
-        <Stack.Screen name="(guardian-onboarding)" />
         <Stack.Screen name="(patient-tabs)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
@@ -115,10 +111,19 @@ export default function RootLayout() {
 }
 
 function SignupButton() {
+  const logout = useAuthStore((s) => s.logout);
+  const clearLinkedPatient = useGuardianStore((s) => s.clearLinkedPatient);
+
+  async function handlePress() {
+    await logout();
+    await clearLinkedPatient();
+    router.replace('/(auth)/register' as never);
+  }
+
   return (
     <View style={{ position: 'absolute', top: 52, left: 12, zIndex: 999 }}>
       <TouchableOpacity
-        onPress={() => router.push('/(auth)/register' as never)}
+        onPress={handlePress}
         style={{
           backgroundColor: '#1D9E75',
           paddingHorizontal: 10,

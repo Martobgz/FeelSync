@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GsrChart } from '@/src/components/charts/gsr-chart';
 import { PulseChart } from '@/src/components/charts/pulse-chart';
-import { Spo2Chart } from '@/src/components/charts/spo2-chart';
+import { SleepChart } from '@/src/components/charts/sleep-chart';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { usePatientMeasurements } from '@/src/hooks/use-patient-measurements';
 import { ChartPeriod } from '@/src/types/biometric';
@@ -14,7 +15,8 @@ const PERIODS: { label: string; value: ChartPeriod }[] = [
 ];
 
 export default function HomeScreen() {
-  const { pulseData, spo2Data, period, loading, error, setPeriod, refresh } = usePatientMeasurements();
+  const { pulseData, sleepData, gsrData, period, loading, error, setPeriod, refresh } =
+    usePatientMeasurements();
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100 dark:bg-gray-900">
@@ -47,16 +49,12 @@ export default function HomeScreen() {
               onPress={() => setPeriod(value)}
               className={[
                 'rounded-full px-5 py-2',
-                period === value
-                  ? 'bg-brand-primary'
-                  : 'bg-white dark:bg-gray-800',
+                period === value ? 'bg-brand-primary' : 'bg-white dark:bg-gray-800',
               ].join(' ')}>
               <Text
                 className={[
                   'font-semibold',
-                  period === value
-                    ? 'text-white'
-                    : 'text-gray-500 dark:text-gray-300',
+                  period === value ? 'text-white' : 'text-gray-500 dark:text-gray-300',
                 ].join(' ')}>
                 {label}
               </Text>
@@ -73,7 +71,8 @@ export default function HomeScreen() {
 
         {/* Charts */}
         <PulseChart data={pulseData} />
-        <Spo2Chart data={spo2Data} />
+        <SleepChart data={sleepData} />
+        <GsrChart data={gsrData} />
 
       </ScrollView>
     </SafeAreaView>

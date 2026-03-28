@@ -22,7 +22,6 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
 
     @Override
@@ -31,14 +30,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
 
-        String token = jwtProvider.extractTokenFromHeader(header);
-        if (jwtProvider.validateToken(token)) {
-            String username = jwtProvider.getUsernameFromToken(token);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userRepository.findByUsername(username)
-                        .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
-
-                if (user != null) {
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
+            if (!token.isBlank() && SecurityContextHolder.getContext().getAuthentication() == null) {
+                userRepository.findByDeviceToken(token).ifPresent(user -> {
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             user,
                             null,
@@ -46,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
+                });
             }
         }
 

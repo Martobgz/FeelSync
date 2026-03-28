@@ -11,16 +11,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { register } from '@/src/services/api/auth-api';
+import { getOrCreateDeviceToken } from '@/src/services/storage/secure-storage';
 import { useAuthStore } from '@/src/stores/auth-store';
+import { useGuardianStore } from '@/src/stores/guardian-store';
 import { UserRole } from '@/src/types/auth';
 
 export default function RegisterScreen() {
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setLinkedPatient = useGuardianStore((s) => s.setLinkedPatient);
 
   const [role, setRole] = useState<UserRole | null>(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [patientUsername, setPatientUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -29,7 +33,8 @@ export default function RegisterScreen() {
     role !== null &&
     username.trim().length >= 3 &&
     email.includes('@') &&
-    password.length >= 6;
+    password.length >= 6 &&
+    (role !== 'GUARDIAN' || patientUsername.trim().length >= 3);
 
   async function handleRegister() {
     if (!canSubmit || !role) return;
@@ -37,13 +42,27 @@ export default function RegisterScreen() {
     setError('');
     setSuccess('');
     try {
-      const result = await register({ username: username.trim(), email: email.trim(), password, role });
+      const deviceToken = await getOrCreateDeviceToken();
+      const result = await register({
+        username: username.trim(),
+        email: email.trim(),
+        password,
+        role,
+        deviceToken,
+        patientUsername: role === 'GUARDIAN' ? patientUsername.trim() : undefined,
+      });
       setSuccess(result.message || 'Account created successfully!');
+      if (role === 'GUARDIAN' && patientUsername.trim()) {
+        await setLinkedPatient(patientUsername.trim());
+      }
       setTimeout(() => setAuth(result.token, role), 1500);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Registration failed. Please try again.';
+      console.error('[Register] error:', JSON.stringify(err, null, 2));
+      const axiosErr = err as { message?: string; response?: { status?: number; data?: { message?: string } } };
+      console.error('[Register] message:', axiosErr?.message);
+      console.error('[Register] status:', axiosErr?.response?.status);
+      console.error('[Register] data:', JSON.stringify(axiosErr?.response?.data));
+      const msg = axiosErr?.response?.data?.message ?? axiosErr?.message ?? 'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -157,6 +176,24 @@ export default function RegisterScreen() {
             <Text className={`mb-6 mt-1 text-xs ${password.length > 0 && password.length < 6 ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
               At least 6 characters
             </Text>
+
+            {role === 'GUARDIAN' && (
+              <>
+                <Text className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Patient Username</Text>
+                <TextInput
+                  value={patientUsername}
+                  onChangeText={setPatientUsername}
+                  placeholder="e.g. johndoe"
+                  placeholderTextColor="#9ca3af"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 dark:border-gray-600 dark:text-white"
+                />
+                <Text className={`mb-6 mt-1 text-xs ${patientUsername.length > 0 && patientUsername.trim().length < 3 ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  Username of the patient you monitor
+                </Text>
+              </>
+            )}
 
             <TouchableOpacity
               onPress={handleRegister}

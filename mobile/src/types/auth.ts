@@ -12,4 +12,6 @@ export interface RegisterPayload {
   email: string;
   password: string;
   role: UserRole;
+  deviceToken: string;
+  patientUsername?: string;
 }

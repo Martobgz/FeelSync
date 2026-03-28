@@ -11,7 +11,9 @@ export async function register(payload: RegisterPayload): Promise<AuthApiRespons
     username: payload.username,
     email: payload.email,
     password: payload.password,
-    role: payload.role,
+    userType: payload.role,
+    deviceToken: payload.deviceToken,
+    patientUsername: payload.patientUsername,
   });
   return data.data;
 }

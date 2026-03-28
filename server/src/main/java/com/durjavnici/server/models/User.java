@@ -27,6 +27,9 @@ public class User {
     @Column(name = "expo_push_token", length = 255)
     private String expoPushToken;
 
+    @Column(name = "device_token", unique = true, length = 36)
+    private String deviceToken;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = false)
     private UserType type;
@@ -43,13 +46,14 @@ public class User {
     }
 
     public User(String username, String email, String passwordHash,
-                String expoPushToken, UserType type, User patient) {
+                String expoPushToken, UserType type, User patient, String deviceToken) {
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.expoPushToken = expoPushToken;
         this.type = type;
         this.patient = patient;
+        this.deviceToken = deviceToken;
     }
 
     public UserType getUserType() {
