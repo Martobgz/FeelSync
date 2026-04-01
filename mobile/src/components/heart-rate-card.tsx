@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Text, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { Status } from '@/src/constants/theme';
 
 interface Props {
   bpm: number | null;
@@ -31,7 +32,7 @@ export function HeartRateCard({ bpm }: Props) {
   return (
     <View className={`flex-1 rounded-2xl p-4 shadow-sm ${bg}`}>
       <View className="mb-1 flex-row items-center gap-1.5">
-        <IconSymbol name="heart.fill" size={14} color="#EF4444" />
+        <IconSymbol name="heart.fill" size={14} color={Status.disconnected} />
         <Text className="text-xs font-medium text-gray-500 dark:text-gray-400">Heart Rate</Text>
       </View>
       <Animated.Text

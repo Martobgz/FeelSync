@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { StorageKeys } from '@/src/constants/storage-keys';
 import { Medication } from '@/src/types/medication';
 
 export interface IntakeSlot {
@@ -64,7 +65,7 @@ export function buildReminderKey(medId: string, date: Date, hhmm: string): strin
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
-  return `feelsync:med_remind:${yyyy}-${mm}-${dd}:${medId}:${hhmm}`;
+  return StorageKeys.medReminder(`${yyyy}-${mm}-${dd}`, medId, hhmm);
 }
 
 /** Returns true if this intake slot has already been reminded today. */

@@ -3,12 +3,13 @@ import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { create } from 'zustand';
 
+import { StorageKeys } from '@/src/constants/storage-keys';
 import { getMedications } from '@/src/services/api/medications-api';
 import { getCachedMedications, upsertMedications } from '@/src/services/data/medications-dao';
 import { scheduleMedicationNotifications } from '@/src/services/notifications/medication-notifications';
 import { Medication } from '@/src/types/medication';
 
-const LOCAL_KEY = 'feelsync:medications';
+const LOCAL_KEY = StorageKeys.medications;
 
 async function loadLocal(): Promise<Medication[] | null> {
   try {
@@ -59,6 +60,7 @@ interface MedicationsState {
   error: string | null;
   fetchMedications: () => Promise<void>;
   addMedication: (data: Omit<Medication, 'id' | 'notificationId'>) => Promise<void>;
+  updateMedication: (id: string, data: Omit<Medication, 'id' | 'notificationId'>) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
   setIntakeTimes: (id: string, times: string[]) => Promise<void>;
   clearCache: () => void;
@@ -110,6 +112,18 @@ export const useMedicationsStore = create<MedicationsState>((set, get) => ({
     };
     newMed.notificationId = await scheduleRefillNotification(newMed);
     const newList = [...medications, newMed];
+    await saveLocal(newList);
+    set({ medications: newList });
+  },
+
+  updateMedication: async (id, data) => {
+    const { medications } = get();
+    const existing = medications.find((m) => m.id === id);
+    if (!existing) return;
+    await cancelNotification(existing.notificationId);
+    const updated: Medication = { ...data, id, intakeTimes: data.intakeTimes ?? [] };
+    updated.notificationId = await scheduleRefillNotification(updated);
+    const newList = medications.map((m) => (m.id === id ? updated : m));
     await saveLocal(newList);
     set({ medications: newList });
   },

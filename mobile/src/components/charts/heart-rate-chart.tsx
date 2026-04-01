@@ -2,6 +2,7 @@ import { Circle, useFont } from '@shopify/react-native-skia';
 import { Text, View } from 'react-native';
 import { CartesianChart, Area, Line } from 'victory-native';
 
+import { Brand, Chart, Status } from '@/src/constants/theme';
 import { DailyHeartRate } from '@/src/types/biometric';
 
 interface Props {
@@ -44,8 +45,8 @@ export function HeartRateChart({ data }: Props) {
             font,
             tickCount: { x: data.length <= 7 ? data.length : 6, y: 5 },
             formatXLabel: (v) => chartData[v as number]?.label ?? '',
-            lineColor: '#E5E7EB',
-            labelColor: '#6B7280',
+            lineColor: Chart.axis,
+            labelColor: Chart.label,
           }}
           domain={{ y: [30, 150] }}>
           {({ points, chartBounds }) => (
@@ -54,21 +55,21 @@ export function HeartRateChart({ data }: Props) {
               <Area
                 points={points.max}
                 y0={({ index }) => points.min[index]?.y ?? chartBounds.bottom}
-                color="#9FE1CB"
+                color={Brand.light}
                 opacity={0.3}
                 animate={{ type: 'timing', duration: 400 }}
               />
               {/* Avg line */}
               <Line
                 points={points.avg}
-                color="#1D9E75"
+                color={Brand.primary}
                 strokeWidth={2}
                 animate={{ type: 'timing', duration: 400 }}
               />
               {/* Anomaly — red circle on anomaly days */}
               {points.avg.map((p, i) =>
                 chartData[i]?.anomaly != null && p.y != null
-                  ? <Circle key={i} cx={p.x} cy={p.y} r={5} color="#EF4444" />
+                  ? <Circle key={i} cx={p.x} cy={p.y} r={5} color={Status.disconnected} />
                   : null
               )}
             </>

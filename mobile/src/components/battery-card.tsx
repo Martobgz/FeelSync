@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { Status } from '@/src/constants/theme';
 
 interface Props {
   level: number | null;
@@ -12,9 +13,9 @@ function getBatteryConfig(level: number | null): {
   iconColor: string;
 } {
   if (level === null) return { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-400', iconColor: '#9ca3af' };
-  if (level < 20) return { bg: 'bg-red-50 dark:bg-red-900/30', text: 'text-red-500', iconColor: '#EF4444' };
-  if (level < 50) return { bg: 'bg-amber-50 dark:bg-amber-900/30', text: 'text-amber-500', iconColor: '#F59E0B' };
-  return { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-600', iconColor: '#22C55E' };
+  if (level < 20) return { bg: 'bg-red-50 dark:bg-red-900/30', text: 'text-red-500', iconColor: Status.disconnected };
+  if (level < 50) return { bg: 'bg-amber-50 dark:bg-amber-900/30', text: 'text-amber-500', iconColor: Status.connecting };
+  return { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-600', iconColor: Status.connected };
 }
 
 export function BatteryCard({ level }: Props) {

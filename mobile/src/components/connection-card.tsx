@@ -1,6 +1,7 @@
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 
 import { BleStatusIndicator } from '@/src/components/ble-status-indicator';
+import { Brand } from '@/src/constants/theme';
 import { BleConnectionState } from '@/src/services/ble/ble-types';
 
 interface Props {
@@ -33,7 +34,7 @@ export function ConnectionCard({ status, deviceName, batteryLevel, onConnect, on
             <Text className="text-xs font-semibold text-red-500">Disconnect</Text>
           </TouchableOpacity>
         ) : status === 'connecting' || status === 'scanning' ? (
-          <ActivityIndicator size="small" color="#1D9E75" />
+          <ActivityIndicator size="small" color={Brand.primary} />
         ) : (
           <TouchableOpacity
             onPress={onConnect}

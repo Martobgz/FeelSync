@@ -15,16 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MedicationCard } from '@/src/components/medication-card';
-import { useMedications } from '@/src/hooks/use-medications';
+import { Brand } from '@/src/constants/theme';
+import { useMedicationsStore } from '@/src/stores/medications-store';
 import { Medication } from '@/src/types/medication';
-
-// ─── helpers ────────────────────────────────────────────────────────────────
-
-function timeToStr(date: Date): string {
-  const h = date.getHours().toString().padStart(2, '0');
-  const m = date.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
-}
+import { formatTimeOfDay } from '@/src/utils/format-time';
 
 // ─── DaysPreview ─────────────────────────────────────────────────────────────
 
@@ -79,7 +73,7 @@ function IntakeTimesModal({
   }
 
   function addTime(date: Date) {
-    const str = timeToStr(date);
+    const str = formatTimeOfDay(date);
     setLocalTimes((prev) =>
       prev.includes(str) ? prev : [...prev, str].sort()
     );
@@ -188,8 +182,12 @@ function IntakeTimesModal({
 // ─── MedicationsScreen ────────────────────────────────────────────────────────
 
 export default function MedicationsScreen() {
-  const { medications, isLoading, addMedication, updateMedication, deleteMedication, setIntakeTimes } =
-    useMedications();
+  const { medications, isLoading, addMedication, updateMedication, deleteMedication, setIntakeTimes, fetchMedications } =
+    useMedicationsStore();
+
+  useEffect(() => {
+    fetchMedications();
+  }, [fetchMedications]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMed, setEditingMed] = useState<Medication | null>(null);
@@ -249,7 +247,7 @@ export default function MedicationsScreen() {
         <Text className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">Medications</Text>
 
         {isLoading ? (
-          <ActivityIndicator size="large" color="#1D9E75" />
+          <ActivityIndicator size="large" color={Brand.primary} />
         ) : (
           <FlatList
             data={medications}

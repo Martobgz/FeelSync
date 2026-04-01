@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BatteryCard } from '@/src/components/battery-card';
@@ -12,20 +11,11 @@ export default function PatientHomeScreen() {
   const batteryLevel = useBleStore((s) => s.batteryLevel);
   const lastHeartRate = useBleStore((s) => s.lastHeartRate);
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  async function handleRefresh() {
-    setIsRefreshing(false);
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-gray-100 dark:bg-gray-900">
       <ScrollView
         className="flex-1 px-4 pt-6"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#1D9E75" />
-        }>
+        showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <View className="mb-4 flex-row items-center justify-between">

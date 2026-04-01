@@ -57,11 +57,7 @@ export default function RegisterScreen() {
       }
       setTimeout(() => setAuth(result.token, role), 1500);
     } catch (err: unknown) {
-      console.error('[Register] error:', JSON.stringify(err, null, 2));
       const axiosErr = err as { message?: string; response?: { status?: number; data?: { message?: string } } };
-      console.error('[Register] message:', axiosErr?.message);
-      console.error('[Register] status:', axiosErr?.response?.status);
-      console.error('[Register] data:', JSON.stringify(axiosErr?.response?.data));
       const msg = axiosErr?.response?.data?.message ?? axiosErr?.message ?? 'Registration failed. Please try again.';
       setError(msg);
     } finally {

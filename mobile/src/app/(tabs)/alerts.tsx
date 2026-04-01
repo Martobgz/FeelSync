@@ -4,18 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fireRandomAlert } from '@/src/services/notifications/alert-simulator';
 import { useAlertsStore } from '@/src/stores/alerts-store';
 import { Alert, AlertSeverity } from '@/src/types/alert';
+import { formatRelativeTime } from '@/src/utils/format-time';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-function relativeTime(ts: number): string {
-  const diff = Date.now() - ts;
-  const min = Math.floor(diff / 60_000);
-  if (min < 1) return 'Just now';
-  if (min < 60) return `${min}m ago`;
-  const hours = Math.floor(min / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
 
 const TYPE_LABEL: Record<Alert['type'], string> = {
   HIGH_HR: 'High HR',
@@ -83,7 +74,7 @@ function AlertCard({ alert, onPress, onRemove }: { alert: Alert; onPress: () => 
           </View>
           <View className="flex-row items-center gap-3">
             <Text className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
-              {relativeTime(alert.timestamp)}
+              {formatRelativeTime(alert.timestamp)}
             </Text>
             <TouchableOpacity onPress={onRemove} hitSlop={8}>
               <Text className="text-xs font-semibold text-red-400">Remove</Text>

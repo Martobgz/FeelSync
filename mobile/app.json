@@ -17,7 +17,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.mobile",
+      "package": "com.feelsync.mobile",
       "permissions": [
         "BLUETOOTH_SCAN",
         "BLUETOOTH_CONNECT",

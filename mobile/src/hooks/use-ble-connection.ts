@@ -1,14 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef } from 'react';
 
+import { Config } from '@/src/constants/config';
+import { StorageKeys } from '@/src/constants/storage-keys';
 import { getDataPipeline } from '@/src/services/data/data-pipeline';
 import { getBleService } from '@/src/services/ble';
 import { requestBlePermissions } from '@/src/services/ble/ble-permissions';
 import { ScannedDevice } from '@/src/services/ble/ble-types';
 import { useBleStore } from '@/src/stores/ble-store';
 
-const DEVICE_ID_KEY = 'feelsync:ble_device_id';
-const DEVICE_NAME_KEY = 'feelsync:ble_device_name';
+const DEVICE_ID_KEY = StorageKeys.bleDeviceId;
+const DEVICE_NAME_KEY = StorageKeys.bleDeviceName;
 
 export function useBleConnection() {
   const setConnectionStatus = useBleStore((s) => s.setConnectionStatus);
@@ -44,7 +46,7 @@ export function useBleConnection() {
               done = true;
               ble.stopScan();
               resolve(false);
-            }, 15_000);
+            }, Config.BLE_SCAN_TIMEOUT_MS);
 
             void ble.startScan((d) => {
               if (done) return;

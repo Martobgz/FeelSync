@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MedicationCard } from '@/src/components/medication-card';
+import { Brand } from '@/src/constants/theme';
 import { MedicationReminder, useMedicationRemindersStore } from '@/src/stores/medication-reminders-store';
 import { useMedicationsStore } from '@/src/stores/medications-store';
 
@@ -28,7 +29,7 @@ function ReminderBanner({ reminder, onDismiss }: { reminder: MedicationReminder;
       style={{
         backgroundColor: isMissed ? '#FFF7ED' : '#F0FDF4',
         borderLeftWidth: 4,
-        borderLeftColor: isMissed ? '#F97316' : '#1D9E75',
+        borderLeftColor: isMissed ? '#F97316' : Brand.primary,
       }}>
       <View className="flex-1 pr-3">
         <Text className="text-sm font-semibold" style={{ color: isMissed ? '#C2410C' : '#15803D' }}>
@@ -43,7 +44,7 @@ function ReminderBanner({ reminder, onDismiss }: { reminder: MedicationReminder;
       <TouchableOpacity
         onPress={onDismiss}
         className="rounded-lg px-3 py-1.5 active:opacity-70"
-        style={{ backgroundColor: isMissed ? '#F97316' : '#1D9E75' }}>
+        style={{ backgroundColor: isMissed ? '#F97316' : Brand.primary }}>
         <Text className="text-sm font-semibold text-white">OK</Text>
       </TouchableOpacity>
     </View>
@@ -73,13 +74,13 @@ export default function PatientMedicationsScreen() {
         <Text className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">Medications</Text>
 
         {isLoading && medications.length === 0 ? (
-          <ActivityIndicator size="large" color="#1D9E75" />
+          <ActivityIndicator size="large" color={Brand.primary} />
         ) : (
           <FlatList
             data={medications}
             keyExtractor={(item) => item.id}
             refreshControl={
-              <RefreshControl refreshing={isLoading} onRefresh={fetchMedications} tintColor="#1D9E75" />
+              <RefreshControl refreshing={isLoading} onRefresh={fetchMedications} tintColor={Brand.primary} />
             }
             ListHeaderComponent={listHeader}
             renderItem={({ item }) => (

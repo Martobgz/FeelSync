@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-const STORAGE_KEY = 'feelsync:linked_patient';
+import { StorageKeys } from '@/src/constants/storage-keys';
+
+const STORAGE_KEY = StorageKeys.linkedPatient;
 
 interface GuardianState {
   linkedPatientUsername: string | null;

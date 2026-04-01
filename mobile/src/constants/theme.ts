@@ -1,20 +1,24 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-export const Status = {
-  connected: '#22C55E',
-  connecting: '#F59E0B',
-  disconnected: '#EF4444',
+import { brand, status } from './colors';
+
+export const Brand = brand;
+export const Status = status;
+
+// Semantic colors for GSR emotional-state segments
+export const Gsr = {
+  normal:   Brand.primary,       // #1D9E75
+  calm:     '#3B82F6',
+  happy:    Status.connected,    // #22C55E
+  tense:    Status.connecting,   // #F59E0B
+  stressed: Status.disconnected, // #EF4444
 };
 
-export const Brand = {
-  primary: '#1D9E75',
-  mid: '#5DCAA5',
-  light: '#9FE1CB',
+// Neutral colors used in chart axes and grid lines
+export const Chart = {
+  axis:     '#E5E7EB', // gray-200
+  label:    '#6B7280', // gray-500
+  gridLine: '#9CA3AF', // gray-400
 };
 
 export const Colors = {

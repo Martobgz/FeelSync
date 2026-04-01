@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { StorageKeys } from '@/src/constants/storage-keys';
 import { Alert } from '@/src/types/alert';
 
-const STORAGE_KEY = 'feelsync:alerts';
+const STORAGE_KEY = StorageKeys.alerts;
 
 interface AlertsState {
   alerts: Alert[];

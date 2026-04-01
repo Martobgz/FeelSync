@@ -1,6 +1,8 @@
 import { View } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 
+import { Brand } from '@/src/constants/theme';
+
 interface Props {
   readings: { x: number; bpm: number }[];
 }
@@ -16,7 +18,7 @@ export function LiveHrChart({ readings }: Props) {
         {({ points }) => (
           <Line
             points={points.bpm}
-            color="#1D9E75"
+            color={Brand.primary}
             strokeWidth={2}
             animate={{ type: 'timing', duration: 300 }}
           />

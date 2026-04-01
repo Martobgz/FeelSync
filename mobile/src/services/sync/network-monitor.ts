@@ -13,7 +13,7 @@ export function startNetworkMonitor(): void {
 
     if (wasOffline && isOnline) {
       // Came back online — sync immediately
-      getSyncManager().syncNow();
+      getSyncManager().syncNow().catch(() => {});
     }
 
     wasOffline = !isOnline;

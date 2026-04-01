@@ -1,6 +1,7 @@
+import { Movement } from '@/src/types/movement';
 import { apiClient } from './client';
 
-export type Movement = 'STILL' | 'WALKING' | 'RUNNING';
+export type { Movement };
 
 export interface MeasurementPayload {
   timestamp: string; // ISO8601 UTC

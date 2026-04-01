@@ -4,6 +4,7 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BleDeviceScanner } from '@/src/components/ble-device-scanner';
+import { Brand } from '@/src/constants/theme';
 import { useBleConnection } from '@/src/hooks/use-ble-connection';
 import { ScannedDevice } from '@/src/services/ble/ble-types';
 
@@ -65,7 +66,7 @@ export default function PairDeviceScreen() {
 
         {isConnecting ? (
           <View className="items-center">
-            <ActivityIndicator size="large" color="#1D9E75" />
+            <ActivityIndicator size="large" color={Brand.primary} />
             <Text className="mt-3 text-sm text-gray-400">Connecting...</Text>
           </View>
         ) : (

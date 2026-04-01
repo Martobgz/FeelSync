@@ -1,11 +1,10 @@
-import { router } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GsrChart } from '@/src/components/charts/gsr-chart';
 import { PulseChart } from '@/src/components/charts/pulse-chart';
 import { SleepChart } from '@/src/components/charts/sleep-chart';
-import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { Brand } from '@/src/constants/theme';
 import { usePatientMeasurements } from '@/src/hooks/use-patient-measurements';
 import { ChartPeriod } from '@/src/types/biometric';
 
@@ -24,22 +23,14 @@ export default function HomeScreen() {
         className="flex-1 px-4 pt-6"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#1D9E75" />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Brand.primary} />
         }>
 
         {/* Header */}
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-3xl font-bold text-gray-900 dark:text-white">Home</Text>
-          {loading && <ActivityIndicator color="#1D9E75" />}
+          {loading && <ActivityIndicator color={Brand.primary} />}
         </View>
-
-        {/* Pair device button */}
-        <TouchableOpacity
-          onPress={() => router.push('/(patient-onboarding)/pair-device')}
-          className="mb-5 flex-row items-center justify-center gap-2 rounded-2xl bg-white py-4 shadow-sm dark:bg-gray-800">
-          <IconSymbol name="antenna.radiowaves.left.and.right" size={22} color="#1D9E75" />
-          <Text className="text-base font-semibold text-brand-primary">Pair Bluetooth Device</Text>
-        </TouchableOpacity>
 
         {/* Period switcher */}
         <View className="mb-5 flex-row gap-2">
@@ -71,8 +62,10 @@ export default function HomeScreen() {
 
         {/* Charts */}
         <PulseChart data={pulseData} />
-        <SleepChart data={sleepData} />
-        <GsrChart data={gsrData} />
+        <View className="flex-row gap-3">
+          <SleepChart data={sleepData} chartHeight={160} style={{ flex: 1 }} />
+          <GsrChart data={gsrData} compact style={{ flex: 1 }} />
+        </View>
 
       </ScrollView>
     </SafeAreaView>

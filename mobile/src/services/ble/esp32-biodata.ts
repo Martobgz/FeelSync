@@ -1,10 +1,11 @@
+import { Movement } from '@/src/types/movement';
+export type { Movement };
+
 export type Esp32BiodataType =
   | 'pulse'
   | 'spo2'
   | 'movement'
   | 'gsr';
-
-export type Movement = 'STILL' | 'WALKING' | 'RUNNING';
 
 export interface Esp32BiodataReading {
   type: Esp32BiodataType;

@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -10,6 +9,8 @@ import {
 } from 'react-native';
 
 import { Config } from '@/src/constants/config';
+import { Brand } from '@/src/constants/theme';
+import { useSpinAnimation } from '@/src/hooks/use-spin-animation';
 import { ScannedDevice } from '@/src/services/ble/ble-types';
 
 function sortedDevices(devices: ScannedDevice[]): ScannedDevice[] {
@@ -28,28 +29,7 @@ interface Props {
 }
 
 export function BleDeviceScanner({ visible, devices, onClose, onSelectDevice }: Props) {
-  const spinValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      const spin = Animated.loop(
-        Animated.timing(spinValue, { toValue: 1, duration: 1200, useNativeDriver: true })
-      );
-      spin.start();
-      return () => {
-        spin.stop();
-        spinValue.setValue(0);
-      };
-    }
-  }, [visible, spinValue]);
-
-  const spinStyle = {
-    transform: [
-      {
-        rotate: spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
-      },
-    ],
-  };
+  const spinStyle = useSpinAnimation(visible, 1200);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -68,7 +48,7 @@ export function BleDeviceScanner({ visible, devices, onClose, onSelectDevice }: 
 
           <View className="mb-4 items-center">
             <Animated.View style={spinStyle}>
-              <ActivityIndicator size="large" color="#1D9E75" />
+              <ActivityIndicator size="large" color={Brand.primary} />
             </Animated.View>
             <Text className="mt-2 text-sm text-gray-400">Scanning for devices...</Text>
           </View>

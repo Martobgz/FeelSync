@@ -1,13 +1,14 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { router, Stack, useSegments } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { View } from 'react-native';
 import 'react-native-reanimated';
 
 import '@/global.css';
 import { useColorScheme } from '@/src/hooks/use-color-scheme';
+import { migrateStorageKeys } from '@/src/services/storage/storage-migration';
 import { initDatabase } from '@/src/services/storage/database';
 import { useAlertsStore } from '@/src/stores/alerts-store';
 import { useAuthStore } from '@/src/stores/auth-store';
@@ -31,6 +32,7 @@ export const unstable_settings = {
 };
 
 async function initializeApp() {
+  await migrateStorageKeys();
   await initDatabase();
   await useAlertsStore.getState().loadStoredAlerts();
   await Notifications.setNotificationChannelAsync('medications', {
@@ -57,6 +59,7 @@ export default function RootLayout() {
   const role = useAuthStore((s) => s.role);
   const deviceId = useBleStore((s) => s.deviceId);
   const loadLinkedPatient = useGuardianStore((s) => s.loadLinkedPatient);
+  const linkedPatientUsername = useGuardianStore((s) => s.linkedPatientUsername);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -87,10 +90,12 @@ export default function RootLayout() {
       router.replace('/(patient-onboarding)/pair-device' as never);
     } else if (role === 'PATIENT') {
       router.replace('/(patient-tabs)/' as never);
+    } else if (role === 'GUARDIAN' && !linkedPatientUsername) {
+      router.replace('/(guardian-onboarding)/connect-patient' as never);
     } else {
       router.replace('/(tabs)/' as never);
     }
-  }, [isReady, isAuthenticated, role, deviceId]);
+  }, [isReady, isAuthenticated, role, deviceId, linkedPatientUsername]);
 
   if (!isReady) return null;
 
@@ -99,65 +104,14 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(patient-onboarding)" />
+        <Stack.Screen name="(guardian-onboarding)" />
         <Stack.Screen name="(patient-tabs)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
-      <SignupButton />
-      {__DEV__ && <DevRoleSwitch />}
       <StatusBar style="auto" />
     </ThemeProvider>
   );
 }
 
-function SignupButton() {
-  const logout = useAuthStore((s) => s.logout);
-  const clearLinkedPatient = useGuardianStore((s) => s.clearLinkedPatient);
 
-  async function handlePress() {
-    await logout();
-    await clearLinkedPatient();
-    router.replace('/(auth)/register' as never);
-  }
-
-  return (
-    <View style={{ position: 'absolute', top: 52, left: 12, zIndex: 999 }}>
-      <TouchableOpacity
-        onPress={handlePress}
-        style={{
-          backgroundColor: '#1D9E75',
-          paddingHorizontal: 10,
-          paddingVertical: 5,
-          borderRadius: 12,
-          opacity: 0.85,
-        }}>
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>+ Sign Up</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function DevRoleSwitch() {
-  const segments = useSegments();
-  const isPatient = segments[0] === '(patient-tabs)';
-
-  return (
-    <View style={{ position: 'absolute', top: 52, right: 12, zIndex: 999 }}>
-      <TouchableOpacity
-        onPress={() =>
-          router.replace((isPatient ? '/(tabs)/' : '/(patient-tabs)/') as never)
-        }
-        style={{
-          backgroundColor: isPatient ? '#6366f1' : '#1D9E75',
-          paddingHorizontal: 10,
-          paddingVertical: 5,
-          borderRadius: 12,
-          opacity: 0.85,
-        }}>
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
-          {isPatient ? '→ Guardian' : '→ Patient'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-}

@@ -8,7 +8,7 @@ function normalizeApiBaseUrl(rawUrl: string): string {
 
 export const Config = {
   API_BASE_URL: normalizeApiBaseUrl(
-    process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.100.5:8888/api'
+    process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://home-server.tailbcaeb8.ts.net/api'
   ),
   SYNC_INTERVAL_MS: 60 * 60 * 1000,
   AGGREGATION_WINDOW_MS: 5 * 60 * 1000,

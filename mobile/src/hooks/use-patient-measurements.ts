@@ -1,11 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
+import { StorageKeys } from '@/src/constants/storage-keys';
 import { getPulse, getSleep, getGsr, TimestampedPulse, GsrDistribution } from '@/src/services/api/measurements-api';
 import { NightlySleep, ChartPeriod } from '@/src/types/biometric';
-
-const cacheKey = (type: 'pulse' | 'sleep' | 'gsr', period: ChartPeriod) =>
-  `feelsync_measurements_${type}_${period}`;
 
 const EMPTY_GSR: GsrDistribution = { normal: 0, tense: 0, stressed: 0, calm: 0, happy: 0 };
 
@@ -24,9 +22,9 @@ export function usePatientMeasurements() {
     // Serve cached data first so charts render immediately
     try {
       const [cachedPulse, cachedSleep, cachedGsr] = await Promise.all([
-        AsyncStorage.getItem(cacheKey('pulse', p)),
-        AsyncStorage.getItem(cacheKey('sleep', p)),
-        AsyncStorage.getItem(cacheKey('gsr', p)),
+        AsyncStorage.getItem(StorageKeys.measurementsCache('pulse', p)),
+        AsyncStorage.getItem(StorageKeys.measurementsCache('sleep', p)),
+        AsyncStorage.getItem(StorageKeys.measurementsCache('gsr', p)),
       ]);
       if (cachedPulse) setPulseData(JSON.parse(cachedPulse));
       if (cachedSleep) setSleepData(JSON.parse(cachedSleep));
@@ -41,9 +39,9 @@ export function usePatientMeasurements() {
       setSleepData(sleep);
       setGsrData(gsr);
       await Promise.all([
-        AsyncStorage.setItem(cacheKey('pulse', p), JSON.stringify(pulse)),
-        AsyncStorage.setItem(cacheKey('sleep', p), JSON.stringify(sleep)),
-        AsyncStorage.setItem(cacheKey('gsr', p), JSON.stringify(gsr)),
+        AsyncStorage.setItem(StorageKeys.measurementsCache('pulse', p), JSON.stringify(pulse)),
+        AsyncStorage.setItem(StorageKeys.measurementsCache('sleep', p), JSON.stringify(sleep)),
+        AsyncStorage.setItem(StorageKeys.measurementsCache('gsr', p), JSON.stringify(gsr)),
       ]);
     } catch {
       setError('Could not load patient data. Showing cached data.');

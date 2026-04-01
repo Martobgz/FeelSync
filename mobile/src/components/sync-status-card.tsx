@@ -1,8 +1,10 @@
 import { Animated, Text, View } from 'react-native';
-import { useEffect, useRef } from 'react';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { Brand, Status } from '@/src/constants/theme';
+import { useSpinAnimation } from '@/src/hooks/use-spin-animation';
 import { SyncStatus } from '@/src/types/biometric';
+import { formatRelativeTime } from '@/src/utils/format-time';
 
 interface Props {
   status: SyncStatus;
@@ -10,38 +12,8 @@ interface Props {
   lastSyncTime: number | null;
 }
 
-function formatRelativeTime(timestamp: number): string {
-  const diffMs = Date.now() - timestamp;
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${Math.floor(diffHours / 24)}d ago`;
-}
-
 export function SyncStatusCard({ status, pendingCount, lastSyncTime }: Props) {
-  const spinValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (status === 'syncing') {
-      const spin = Animated.loop(
-        Animated.timing(spinValue, { toValue: 1, duration: 1000, useNativeDriver: true })
-      );
-      spin.start();
-      return () => spin.stop();
-    } else {
-      spinValue.setValue(0);
-    }
-  }, [status, spinValue]);
-
-  const spinStyle = {
-    transform: [
-      {
-        rotate: spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
-      },
-    ],
-  };
+  const spinStyle = useSpinAnimation(status === 'syncing');
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
@@ -51,7 +23,7 @@ export function SyncStatusCard({ status, pendingCount, lastSyncTime }: Props) {
             <IconSymbol
               name="arrow.triangle.2.circlepath"
               size={16}
-              color={status === 'error' ? '#EF4444' : '#1D9E75'}
+              color={status === 'error' ? Status.disconnected : Brand.primary}
             />
           </Animated.View>
           <Text className="text-sm font-semibold text-gray-700 dark:text-gray-200">Sync</Text>

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Config } from '@/src/constants/config';
 import { BLE_UUIDS } from '@/src/constants/ble-uuids';
 import { postMeasurement } from '@/src/services/api/measurements-api';
+import * as logger from '@/src/utils/logger';
 import {
   BleConnectionState,
   BleServiceInterface,
@@ -13,6 +14,7 @@ import {
 } from './ble-types';
 import { BleReconnect } from './ble-reconnect';
 import { movementFromEspValue, parseEsp32BlePacket } from './esp32-biodata';
+import { Movement } from '@/src/types/movement';
 
 type HrCallback = (r: ParsedHeartRate) => void;
 type AccelCallback = (r: ParsedAccelerometer) => void;
@@ -71,7 +73,7 @@ export class RealBleManager implements BleServiceInterface {
   private latestMeasurement: {
     pulse?: number;
     spo2?: number;
-    movement?: 'STILL' | 'WALKING' | 'RUNNING';
+    movement?: Movement;
     gsrState?: number;
   } = {};
   private lastMeasurementPostedAt = 0;
@@ -103,7 +105,7 @@ export class RealBleManager implements BleServiceInterface {
       { allowDuplicates: false },
       (error, device) => {
         if (error) {
-          console.warn('[BLE] Scan error:', error.message);
+          logger.warn('[BLE] Scan error:', error.message);
           this.setState('disconnected');
           return;
         }
@@ -134,11 +136,11 @@ export class RealBleManager implements BleServiceInterface {
   async connect(deviceId: string): Promise<void> {
     // Prevent overlapping connect attempts
     if (this.connectInProgress) {
-      console.log('[BLE] connect() skipped — already in progress');
+      logger.log('[BLE] connect() skipped — already in progress');
       return;
     }
     if (this.connectionState === 'connected') {
-      console.log('[BLE] connect() skipped — already connected');
+      logger.log('[BLE] connect() skipped — already connected');
       return;
     }
 
@@ -153,7 +155,7 @@ export class RealBleManager implements BleServiceInterface {
       try {
         const stale = await this.manager.isDeviceConnected(deviceId);
         if (stale) {
-          console.log('[BLE] Cancelling stale connection before reconnecting');
+          logger.log('[BLE] Cancelling stale connection before reconnecting');
           await this.manager.cancelDeviceConnection(deviceId);
           // Give the ESP32 time to process the disconnect and start re-advertising
           await new Promise((r) => setTimeout(r, 1000));
@@ -196,7 +198,6 @@ export class RealBleManager implements BleServiceInterface {
   }
 
   private async reconnectWithPreScan(deviceId: string): Promise<void> {
-    // Scan up to 15s to verify the device is in range before reconnecting.
     try {
       this.setState('scanning');
       const found = await new Promise<boolean>((resolve) => {
@@ -206,7 +207,7 @@ export class RealBleManager implements BleServiceInterface {
           done = true;
           this.manager.stopDeviceScan();
           resolve(false);
-        }, 15_000);
+        }, Config.BLE_SCAN_TIMEOUT_MS);
 
         this.manager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
           if (done) return;
@@ -288,11 +289,11 @@ export class RealBleManager implements BleServiceInterface {
   }
 
   private handleCharacteristicUpdate(charUUID: string, bytes: number[]): void {
-    console.log(`[BLE IN] char=${charUUID} bytes=[${bytes.join(',')}]`);
+    logger.log(`[BLE IN] char=${charUUID} len=${bytes.length}`);
     switch (charUUID) {
       case BLE_UUIDS.FEELSYNC_BIODATA: {
         const pkt = parseEsp32BlePacket(bytes);
-        console.log('[BLE PARSED]', pkt ? `type=${pkt.type} value=${pkt.value}` : 'null (unrecognised type)');
+        logger.log('[BLE PARSED]', pkt ? `type=${pkt.type}` : 'null (unrecognised type)');
         if (!pkt) return;
 
         if (pkt.type === 'pulse') {
@@ -304,7 +305,7 @@ export class RealBleManager implements BleServiceInterface {
         if (pkt.type === 'gsr') this.latestMeasurement.gsrState = pkt.value;
 
         const { pulse, spo2, movement, gsrState } = this.latestMeasurement;
-        console.log('[BLE ACCUM]', { pulse, spo2, movement, gsrState });
+        logger.log('[BLE ACCUM] fields present:', { pulse: pulse != null, spo2: spo2 != null, movement: movement != null, gsrState: gsrState != null });
         if (pulse == null || spo2 == null || movement == null) return;
 
         // Throttle a bit so we don't POST on every notify burst.
@@ -320,21 +321,20 @@ export class RealBleManager implements BleServiceInterface {
             movement,
             gsrState,
           };
-          console.log('[BLE POST] →', JSON.stringify(payload));
+          logger.log('[BLE POST] → sending measurement');
           try {
             await postMeasurement(payload);
-            console.log('[BLE POST] ✓ measurement accepted');
+            logger.log('[BLE POST] ✓ measurement accepted');
           } catch (err) {
             if (axios.isAxiosError(err)) {
               const fullUrl = combineUrls(err.config?.baseURL, err.config?.url);
-              console.warn('[BLE POST] ✗ failed:', {
+              logger.warn('[BLE POST] ✗ failed:', {
                 message: err.message,
                 status: err.response?.status,
                 url: fullUrl,
-                data: err.response?.data,
               });
             } else {
-              console.warn('[BLE POST] ✗ failed:', err);
+              logger.warn('[BLE POST] ✗ failed:', err);
             }
           }
         })();
